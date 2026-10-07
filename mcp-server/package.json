@@ -14,7 +14,8 @@
     "site:list": "tsx src/cli/list-sites.ts",
     "admin:hash-password": "tsx src/cli/hash-password.ts",
     "test": "tsx --test src/**/*.test.ts",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "migrate:file-sites": "tsx src/cli/migrate-file-sites.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",
