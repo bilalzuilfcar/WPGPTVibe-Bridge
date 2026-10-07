@@ -234,10 +234,32 @@ final class WPGPTVibe_Theme_Manager {
             throw new RuntimeException('Draft theme is not valid and cannot be published.');
         }
 
-        self::validate_php_tree(self::theme_root($draft['stylesheet']));
+        $draft_root = self::theme_root($draft['stylesheet']);
+        self::validate_php_tree($draft_root);
 
         $previous = get_stylesheet();
         $release_id = wp_generate_uuid4();
+        $base_slug = sanitize_key((string) ($draft['source_stylesheet'] ?? $previous));
+        $release_slug = sanitize_key(substr(
+            $base_slug . '-wpgptvibe-release-' . gmdate('Ymd-His') . '-' . substr(str_replace('-', '', $release_id), 0, 8),
+            0,
+            120
+        ));
+        $release_root = trailingslashit(get_theme_root($draft['stylesheet'])) . $release_slug;
+
+        if (is_dir($release_root)) {
+            throw new RuntimeException('Release theme directory already exists.');
+        }
+
+        self::copy_directory($draft_root, $release_root);
+        self::validate_php_tree($release_root);
+
+        $release_theme = wp_get_theme($release_slug);
+        if (!$release_theme->exists() || !empty($release_theme->errors())) {
+            self::delete_directory($release_root);
+            throw new RuntimeException('Release theme is not valid and cannot be activated.');
+        }
+
         $releases = get_option(self::RELEASES_OPTION, []);
         if (!is_array($releases)) {
             $releases = [];
@@ -246,21 +268,28 @@ final class WPGPTVibe_Theme_Manager {
         $releases[$release_id] = [
             'release_id' => $release_id,
             'previous_stylesheet' => $previous,
-            'published_stylesheet' => $draft['stylesheet'],
+            'published_stylesheet' => $release_slug,
+            'source_draft' => $draft['stylesheet'],
             'created_at' => gmdate('c'),
         ];
         update_option(self::RELEASES_OPTION, $releases, false);
 
-        switch_theme($draft['stylesheet']);
+        switch_theme($release_slug);
 
-        WPGPTVibe_Audit_Log::record('draft_theme_publish', $draft['stylesheet'], 'success', [
-            'meta' => ['release_id' => $release_id, 'previous_stylesheet' => $previous],
+        WPGPTVibe_Audit_Log::record('draft_theme_publish', $release_slug, 'success', [
+            'meta' => [
+                'release_id' => $release_id,
+                'previous_stylesheet' => $previous,
+                'source_draft' => $draft['stylesheet'],
+            ],
         ]);
 
         return [
             'release_id' => $release_id,
             'backup_id' => $release_id,
             'active_theme' => get_stylesheet(),
+            'release_stylesheet' => $release_slug,
+            'previous_stylesheet' => $previous,
         ];
     }
 
