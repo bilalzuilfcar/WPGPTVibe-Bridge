@@ -16,11 +16,24 @@ function masterKey(): Buffer {
   return Buffer.from(raw, 'hex');
 }
 
+const nodeEnv = process.env.NODE_ENV?.trim() || 'development';
+const sessionSecret = process.env.WPGPTVIBE_SESSION_SECRET?.trim() || process.env.MCP_API_KEY?.trim() || '';
+
+if (sessionSecret.length < 32) {
+  throw new Error('WPGPTVIBE_SESSION_SECRET (or MCP_API_KEY fallback) must be at least 32 characters.');
+}
+
 export const config = {
+  nodeEnv,
   port: Number(process.env.PORT ?? 8787),
   mcpApiKey: required('MCP_API_KEY'),
   masterKey: masterKey(),
   dataDir: path.resolve(process.env.WPGPTVIBE_DATA_DIR ?? './data'),
+  databaseUrl: process.env.DATABASE_URL?.trim() || '',
+  adminUsername: process.env.WPGPTVIBE_ADMIN_USERNAME?.trim() || 'admin',
+  adminPasswordHash: process.env.WPGPTVIBE_ADMIN_PASSWORD_HASH?.trim() || '',
+  sessionSecret,
+  cookieSecure: nodeEnv === 'production' || /^(1|true|yes)$/i.test(process.env.WPGPTVIBE_COOKIE_SECURE ?? ''),
   browserTesting: /^(1|true|yes)$/i.test(process.env.WPGPTVIBE_BROWSER_TESTING ?? ''),
   browserTimeoutMs: Math.max(3000, Math.min(60000, Number(process.env.WPGPTVIBE_BROWSER_TIMEOUT_MS ?? 15000))),
 };
@@ -31,4 +44,12 @@ if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
 
 if (!Number.isFinite(config.browserTimeoutMs)) {
   throw new Error('WPGPTVIBE_BROWSER_TIMEOUT_MS must be numeric.');
+}
+
+if (config.nodeEnv === 'production' && !config.databaseUrl) {
+  console.warn('[wpgptvibe] DATABASE_URL is not configured. Falling back to encrypted local file storage.');
+}
+
+if (config.nodeEnv === 'production' && !config.adminPasswordHash) {
+  console.warn('[wpgptvibe] Admin dashboard login is disabled until WPGPTVIBE_ADMIN_PASSWORD_HASH is configured.');
 }
