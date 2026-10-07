@@ -1,170 +1,93 @@
-# WPGPTVibe MCP
+# WPGPTVibe Application
 
-Version 0.2.0 remote MCP server for WPGPTVibe Bridge.
+WPGPTVibe is a single deployable Node.js application that serves the MCP endpoint and the web control plane.
 
-The server uses the MCP TypeScript v2 packages and exposes one authenticated remote endpoint at `/mcp`.
+## Runtime endpoints
 
-## Requirements
+- `GET /health` — application and storage health
+- `GET /admin/login` — administration login
+- `/admin` — site dashboard, diagnostics, release history and activity
+- `POST /mcp` — authenticated MCP endpoint
 
-- Node.js 20+
-- HTTPS reverse proxy in production
-- Persistent writable directory for `data/sites.json`
-- Optional: Playwright Chromium for browser QA tools
+## Production storage
 
-## Environment
+Set `DATABASE_URL` to a MySQL connection string. On startup WPGPTVibe creates the required tables automatically.
 
-Copy `.env.example` values into the host environment manager.
+If `DATABASE_URL` is omitted, WPGPTVibe uses encrypted local file storage for compatibility and development.
 
-Generate two different strong values locally:
+To migrate an existing `data/sites.json` registry into MySQL:
 
 ```bash
-openssl rand -hex 32
+DATABASE_URL="mysql://..." \
+MCP_API_KEY="..." \
+WPGPTVIBE_MASTER_KEY="..." \
+WPGPTVIBE_SESSION_SECRET="..." \
+npm run migrate:file-sites
 ```
 
-- `MCP_API_KEY`: bearer secret protecting `/mcp`
-- `WPGPTVIBE_MASTER_KEY`: exactly 64 hex characters (32 bytes), used to encrypt WordPress Bridge tokens at rest
+## Admin login
 
-Optional browser QA:
+Generate a scrypt password hash:
+
+```bash
+export WPGPTVIBE_ADMIN_PASSWORD='a-long-password'
+export MCP_API_KEY='a-32-byte-or-longer-secret'
+export WPGPTVIBE_MASTER_KEY='64-hex-characters'
+export WPGPTVIBE_SESSION_SECRET='another-32-byte-or-longer-secret'
+npm run admin:hash-password
+```
+
+Store the generated hash as `WPGPTVIBE_ADMIN_PASSWORD_HASH`. The raw password is never stored by the application.
+
+## WordPress registration
+
+1. Install **WPGPTVibe Bridge** on WordPress.
+2. Open **Tools → WPGPTVibe**.
+3. Generate the one-time Bridge API token.
+4. Copy the Site ID.
+5. In WPGPTVibe open **Admin → Sites → Add site**.
+6. Enter the display name, WordPress URL, Site ID and Bridge token.
+7. Open the site console and run **Test connection**.
+
+The token is encrypted with AES-256-GCM before persistence and is not shown again.
+
+## MCP
+
+Configure the MCP client with:
+
+- URL: `https://your-wpgptvibe-host.example/mcp`
+- Authorization: `Bearer <MCP_API_KEY>`
+
+The MCP layer exposes site, theme, content, media, SEO, cache, approved WP-CLI, calculator and browser-QA operations. High-risk operations keep explicit confirmation literals and WordPress-side permission gates.
+
+## Browser QA
+
+Set:
 
 ```text
 WPGPTVIBE_BROWSER_TESTING=true
-WPGPTVIBE_BROWSER_TIMEOUT_MS=15000
 ```
 
-When browser testing is enabled, install Chromium on the server after `npm install`:
+and install Playwright Chromium on the host. Browser tools are restricted to registered WordPress site origins.
 
-```bash
-npx playwright install chromium
-```
+## Request protection
 
-Do not commit real secrets.
+Production defaults:
 
-## Register a WordPress site
+- MCP body limit: 4 MB
+- MCP rate limit: 240 requests/minute per client address
+- admin login limit: 10 attempts per 15 minutes per client address
 
-After installing WPGPTVibe Bridge and generating its token:
+All are configurable through the environment.
 
-```bash
-export WPGPTVIBE_SITE_ID="<site UUID from Tools > WPGPTVibe>"
-export WPGPTVIBE_SITE_NAME="EzyMFG"
-export WPGPTVIBE_SITE_URL="https://mfg.martzine.com/"
-export WPGPTVIBE_SITE_TOKEN="<Bridge token shown once>"
-npm run site:add
-```
-
-The token is encrypted with AES-256-GCM before it is written to the site registry. `list_sites` never returns encrypted or decrypted site tokens.
-
-## Run
+## Build and run
 
 ```bash
 npm install
+npm test
 npm run check
 npm run build
 npm start
 ```
 
-Health:
-
-```text
-GET /health
-```
-
-MCP:
-
-```text
-POST /mcp
-Authorization: Bearer <MCP_API_KEY>
-```
-
-## Tool surface
-
-### Sites and audit
-
-- `list_sites`
-- `site_info`
-- `audit_log`
-
-### Theme/files
-
-- `list_files`
-- `search_files`
-- `read_file`
-- `get_file_diff`
-- `create_draft_theme`
-- `get_draft_status`
-- `get_preview_url`
-- `edit_file`
-- `write_file`
-- `delete_file`
-- `batch_edit_files`
-- `publish_draft_theme`
-- `rollback_theme`
-
-### Content
-
-- `list_content_types`
-- `list_content`
-- `get_content`
-- `create_content`
-- `update_content`
-- `delete_content`
-- `batch_update_content`
-
-### Metadata
-
-- `get_meta`
-- `update_meta`
-- `batch_update_meta`
-
-### Media
-
-- `list_media`
-- `get_media`
-- `upload_media`
-- `import_media`
-- `update_media`
-
-### SEO
-
-- `get_seo`
-- `update_seo`
-- `batch_update_seo`
-
-Rank Math is preferred, Yoast is supported, and a generic fallback is available.
-
-### Maintenance
-
-- `clear_cache`
-- `flush_rewrites`
-- `wpcli_status`
-- `run_wpcli`
-
-`run_wpcli` accepts only named allowlisted operations. It never accepts a raw shell command.
-
-### Calculator QA
-
-- `list_calculators`
-- `get_calculator`
-- `update_calculator`
-- `validate_calculator`
-- `validate_all_calculators`
-- `test_calculator`
-- `batch_update_calculators`
-
-These tools use a generic Bridge provider/filter contract. EzyMFG can register its existing calculator definitions without coupling the MCP server to one theme.
-
-### Optional browser QA
-
-Registered only when `WPGPTVIBE_BROWSER_TESTING=true`:
-
-- `test_page`
-- `scan_console_errors`
-- `test_all_routes`
-- `test_calculator_ui`
-
-Browser tools can navigate only paths on a site already registered in WPGPTVibe. Arbitrary cross-origin URLs are rejected.
-
-## Risk controls
-
-WPGPTVibe removes third-party quota limits, not safety controls.
-
-High-risk operations require explicit confirmation literals as part of the MCP schema and separate Bridge capabilities. Examples include theme publish/rollback, file deletion, content deletion and rewrite flushes.
+See `../deploy/PRODUCTION.md` and `../docker-compose.yml` for production deployment.
