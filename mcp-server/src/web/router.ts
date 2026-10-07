@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { config } from '../config.js';
 import { databaseEnabled, ensureSchema } from '../storage/database.js';
+import { checkRateLimit, requestIdentity } from '../security/rate-limit.js';
 import { listActivity, recordActivity } from '../storage/activity.js';
 import { deleteSite, getSite, listSites, upsertSite } from '../storage/sites.js';
 import { callBridge } from '../wordpress/client.js';
@@ -32,6 +33,9 @@ export async function handleWeb(req:IncomingMessage,res:ServerResponse,url:URL):
  if(url.pathname==='/admin/login'){
    if(req.method==='GET'){send(res,200,loginPage(url.searchParams.get('error')||undefined));return true;}
    if(req.method==='POST'){
+     const identity=requestIdentity(req.headers,req.socket.remoteAddress);
+     const rate=checkRateLimit('admin-login:'+identity,config.adminLoginAttemptsPer15Minutes,15*60_000);
+     if(!rate.ok){send(res,429,'Too many login attempts. Try again later.','text/plain',{'retry-after':String(rate.retryAfterSeconds)});return true;}
      const form=await formBody(req); const username=form.get('username')||''; const password=form.get('password')||'';
      if(!config.adminPasswordHash||username!==config.adminUsername||!verifyAdminPassword(password)){redirect(res,withMessage('/admin/login','error','Invalid username or password.'));return true;}
      redirect(res,'/admin',{'set-cookie':adminCookie(createAdminSession(username))});return true;
