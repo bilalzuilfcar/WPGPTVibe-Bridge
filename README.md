@@ -1,66 +1,72 @@
 # WPGPTVibe
 
-Internal WordPress MCP system for secure management of multiple WordPress sites from ChatGPT-compatible MCP clients.
+WPGPTVibe is a self-hosted WordPress control plane and MCP application. It is designed to replace quota-bound third-party WordPress connectors for internal site operations while keeping destructive actions permission-gated and auditable.
 
-WPGPTVibe is built to replace our dependency on WPVibe for internal site work. It removes third-party action quotas and gives us our own permissions, batching, multi-site registry, calculator QA and deployment workflow while retaining safety controls for production sites.
+## Architecture
 
-## Components
+```text
+ChatGPT / MCP client
+        |
+        v
+WPGPTVibe application
+  /mcp      MCP endpoint
+  /admin    management console
+  /health   deployment health
+        |
+        v
+Encrypted multi-site registry + activity log
+(MySQL in production, encrypted local file fallback in development)
+        |
+        v
+WPGPTVibe Bridge plugin on each WordPress site
+        |
+        v
+Themes / content / media / SEO / cache / calculators / approved WP-CLI
+```
 
-- `wordpress-plugin/` — WPGPTVibe Bridge WordPress plugin
-- `mcp-server/` — remote MCP server (Node.js/TypeScript)
+## Current release: 0.3.0
 
-## Versions
+### Application
 
-- WPGPTVibe Bridge: **0.2.0**
-- WPGPTVibe MCP: **0.2.0**
+- remote MCP endpoint
+- responsive admin dashboard
+- signed admin sessions and CSRF protection
+- MySQL-backed multi-site registry
+- AES-256-GCM encrypted WordPress Bridge tokens
+- site add/update/remove and connection testing
+- live WordPress diagnostics
+- central activity logging
+- theme release and rollback history
+- optional Playwright browser QA
+- Docker and Docker Compose deployment
+- production health endpoint
 
-## Current capability surface
+### WordPress Bridge
 
-- multi-site registration and encrypted site-token storage
-- site/environment diagnostics
-- audit logs
-- theme file list/search/read/diff
-- draft-theme creation, preview, edit, write, delete and batch edit
-- publish and rollback with explicit confirmation gates
-- WordPress pages/posts/public custom post-type CRUD
-- batch content updates
-- protected-safe post metadata and batch meta updates
-- media list/get/upload/HTTPS import/update
-- Rank Math and Yoast SEO adapters plus generic fallback
-- batch SEO updates
-- object/plugin/SEO cache purge utilities
-- rewrite flush
-- allowlisted WP-CLI wrapper
-- calculator provider contract
-- calculator get/update/validate/test/batch tools
-- validate-all-calculators in one action
-- optional Playwright page/calculator/route/console QA
-- GitHub CI and installable WordPress plugin packaging
+- capability-gated REST API
+- theme listing/search/read/diff
+- draft theme creation and preview
+- exact file edits, writes, deletes and batches
+- immutable release themes on publish
+- rollback records
+- pages/posts/custom post types
+- meta management
+- media upload/import/update
+- Rank Math / Yoast / generic SEO fields
+- cache and rewrite controls
+- structured allowlisted WP-CLI operations
+- calculator provider contract and validation
+- request guards, audit logs and confirmation gates
 
-## Security defaults
+## Repository
 
-- HTTPS required outside local development
-- WordPress API token stored as a one-way hash
-- MCP site tokens encrypted at rest with AES-256-GCM
-- stable site UUID verification
-- explicit capability allowlist
-- request size and basic rate limits
-- theme path traversal protection
-- file extension allowlist
-- protected metadata allowlist
-- draft-first theme writes
-- high-risk confirmation gates
-- audit logging without secrets
-- no arbitrary SQL endpoint
-- no PHP eval endpoint
-- no unrestricted shell endpoint
-- allowlisted WP-CLI only
+- `wordpress-plugin/` — installable WordPress Bridge
+- `mcp-server/` — deployable WPGPTVibe Node application
+- `deploy/` — production deployment notes
+- `docker-compose.yml` — app + MySQL deployment
 
-WPGPTVibe has no external daily action quota. Limits that remain are technical/safety limits under our control (for example request size, batch size and media size) and can be adjusted in our own code when needed.
+GitHub Actions validates PHP syntax, runs MCP tests/type checks/builds, boots the application for smoke tests and produces both deployment artifacts.
 
-## Documentation
+## Production rule
 
-- `wordpress-plugin/README.md` — Bridge install, REST surface and WordPress-side controls
-- `mcp-server/README.md` — server deployment, site registration and MCP tools
-- `docs/superpowers/specs/2026-10-07-wpgptvibe-full-connector-design.md` — approved design
-- `docs/superpowers/plans/2026-10-07-wpgptvibe-full-connector.md` — implementation plan
+Do not commit real API tokens, MCP keys, database credentials, admin password hashes or master keys. Production secrets belong only in the hosting environment.
