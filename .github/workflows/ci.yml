@@ -24,7 +24,7 @@ jobs:
           path: build/wpgptvibe-bridge.zip
           if-no-files-found: error
 
-  mcp-server:
+  app:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,3 +38,27 @@ jobs:
       - run: npm test
       - run: npm run check
       - run: npm run build
+      - name: Smoke test application
+        env:
+          MCP_API_KEY: 0123456789abcdef0123456789abcdef
+          WPGPTVIBE_MASTER_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          WPGPTVIBE_SESSION_SECRET: abcdef0123456789abcdef0123456789abcdef0123456789
+        run: |
+          node dist/index.js > /tmp/wpgptvibe.log 2>&1 &
+          APP_PID=$!
+          trap "kill $APP_PID || true" EXIT
+          sleep 2
+          curl -fsS http://127.0.0.1:8787/health | grep '"ok":true'
+          curl -fsS http://127.0.0.1:8787/admin/login | grep 'WPGPTVibe'
+      - name: Package deployable application
+        run: |
+          mkdir -p ../build/wpgptvibe-app
+          cp package.json .env.example Dockerfile ../build/wpgptvibe-app/
+          cp -R dist ../build/wpgptvibe-app/dist
+          cd ../build
+          tar -czf wpgptvibe-app.tar.gz wpgptvibe-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wpgptvibe-app
+          path: build/wpgptvibe-app.tar.gz
+          if-no-files-found: error
