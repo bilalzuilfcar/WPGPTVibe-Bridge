@@ -71,6 +71,20 @@ export function createServer(): McpServer {
     inputSchema: z.object({ site_id: siteId, limit: z.number().int().min(1).max(200).default(50) }),
   }, async ({ site_id, limit }) => execute(() => callBridge(site_id, 'GET', 'audit', { limit })));
 
+  server.registerTool('get_bridge_capabilities', {
+    description: 'Read available and enabled WPGPTVibe Bridge capabilities for a site.',
+    inputSchema: z.object({ site_id: siteId }),
+  }, async ({ site_id }) => execute(() => callBridge(site_id, 'GET', 'bridge/capabilities')));
+
+  server.registerTool('update_bridge_capabilities', {
+    description: 'HIGH RISK: replace enabled Bridge capabilities. The manage_bridge capability must already be enabled locally on WordPress.',
+    inputSchema: z.object({
+      site_id: siteId,
+      enabled: z.array(z.string()).max(50),
+      confirm: z.literal('UPDATE_PERMISSIONS'),
+    }),
+  }, async ({ site_id, enabled }) => execute(() => callBridge(site_id, 'PUT', 'bridge/capabilities', { enabled })));
+
   server.registerTool('list_files', {
     description: 'List files in an active or named WordPress theme.',
     inputSchema: z.object({ site_id: siteId, theme: z.string().optional(), path: z.string().optional() }),
