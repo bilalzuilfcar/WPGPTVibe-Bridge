@@ -49,3 +49,57 @@ export function siteFormPage(csrf:string,site?:Omit<SiteRecord,'encryptedApiToke
 export function activityPage(activity: ActivityRecord[]): string {
   return layout('Activity', `<div class="top"><div class="title"><h1>Activity</h1><p>Central MCP and Bridge request history. Secrets are never logged.</p></div></div>${activityTable(activity)}`,'activity');
 }
+
+export function siteDetailPage(input:{
+  csrf:string;
+  site:Omit<SiteRecord,'encryptedApiToken'>;
+  info?:any;
+  releases?:any[];
+  bridgeAudit?:any[];
+  message?:string;
+  error?:string;
+}): string {
+  const s=input.site;
+  const info=input.info||{};
+  const releases=Array.isArray(input.releases)?input.releases:[];
+  const bridgeAudit=Array.isArray(input.bridgeAudit)?input.bridgeAudit:[];
+  const cap=Array.isArray(info.capabilities)?info.capabilities:[];
+
+  return layout('Manage site', `
+  <div class="top"><div class="title"><h1>${esc(s.displayName)}</h1><p>${esc(s.siteUrl)}</p></div><a class="btn" href="/admin/sites">Back to sites</a></div>
+  ${input.message?`<div class="flash">${esc(input.message)}</div>`:''}
+  ${input.error?`<div class="flash error">${esc(input.error)}</div>`:''}
+
+  <div class="grid">
+    <div class="card"><div class="muted">Connection</div><div class="metric" style="font-size:18px">${input.info?'Healthy':'Unavailable'}</div></div>
+    <div class="card"><div class="muted">WordPress</div><div class="metric" style="font-size:18px">${esc(info.wordpress_version||'—')}</div></div>
+    <div class="card"><div class="muted">Bridge</div><div class="metric" style="font-size:18px">${esc(info.plugin_version||s.pluginVersion||'—')}</div></div>
+    <div class="card"><div class="muted">Permissions</div><div class="metric" style="font-size:18px">${cap.length}</div></div>
+  </div>
+
+  <div class="section"><h2>Site diagnostics</h2><div class="card"><div class="form-grid">
+    <div><div class="muted">Site ID</div><div class="code">${esc(s.siteId)}</div></div>
+    <div><div class="muted">Theme</div><div>${esc(info.active_theme?.name||'—')} ${esc(info.active_theme?.version||'')}</div></div>
+    <div><div class="muted">PHP</div><div>${esc(info.php_version||'—')}</div></div>
+    <div><div class="muted">SEO provider</div><div>${esc(info.seo_provider||'—')}</div></div>
+    <div class="field full"><div class="muted">Enabled Bridge capabilities</div><div class="code">${esc(cap.join(', ')||'—')}</div></div>
+  </div><div class="actions"><form method="post" action="/admin/sites/${esc(s.siteId)}/test"><input type="hidden" name="csrf" value="${esc(input.csrf)}"><button class="btn primary" type="submit">Test connection</button></form></div></div></div>
+
+  <div class="section"><h2>Theme releases & rollback points</h2><div class="table-wrap"><table class="table"><thead><tr><th>Release</th><th>Published theme</th><th>Previous theme</th><th>Created</th></tr></thead><tbody>
+  ${releases.length?releases.map(r=>`<tr><td class="code">${esc(r.release_id||'—')}</td><td>${esc(r.published_stylesheet||'—')}</td><td>${esc(r.previous_stylesheet||'—')}</td><td>${esc(r.created_at||'—')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">No release records yet.</td></tr>`}
+  </tbody></table></div></div>
+
+  <div class="section"><h2>Connection settings</h2><div class="card"><form method="post" action="/admin/sites/${esc(s.siteId)}"><input type="hidden" name="csrf" value="${esc(input.csrf)}">
+    <div class="form-grid"><div class="field"><label>Display name</label><input class="input" name="display_name" value="${esc(s.displayName)}" required></div>
+    <div class="field"><label>Site ID</label><input class="input code" value="${esc(s.siteId)}" readonly></div>
+    <div class="field full"><label>WordPress URL</label><input class="input" type="url" name="site_url" value="${esc(s.siteUrl)}" required></div>
+    <div class="field full"><label>Rotate Bridge token</label><input class="input code" type="password" name="api_token" autocomplete="off"><div class="muted">Leave blank to keep the existing encrypted token.</div></div></div>
+    <div class="actions"><button class="btn" type="submit">Save settings</button></div></form></div></div>
+
+  <div class="section"><h2>Recent Bridge audit</h2><div class="table-wrap"><table class="table"><thead><tr><th>Time</th><th>Operation</th><th>Target</th><th>Result</th></tr></thead><tbody>
+  ${bridgeAudit.length?bridgeAudit.slice(0,25).map(a=>`<tr><td>${esc(a.timestamp||'—')}</td><td>${esc(a.operation||a.op||'—')}</td><td class="code">${esc(a.target||'—')}</td><td>${esc(a.result||'—')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">No Bridge audit entries available.</td></tr>`}
+  </tbody></table></div></div>
+
+  <div class="section"><h2>Danger zone</h2><div class="card"><form method="post" action="/admin/sites/${esc(s.siteId)}/delete" onsubmit="return confirm('Remove this site from WPGPTVibe?')"><input type="hidden" name="csrf" value="${esc(input.csrf)}"><button class="btn danger" type="submit">Remove site</button></form></div></div>
+  `,'sites');
+}
