@@ -24,6 +24,7 @@ final class WPGPTVibe_Auth {
         'purge_cache',
         'run_wpcli',
         'manage_calculators',
+        'manage_bridge',
     ];
 
     public static function activate(): void {
@@ -46,6 +47,7 @@ final class WPGPTVibe_Auth {
                 'purge_cache' => false,
                 'run_wpcli' => false,
                 'manage_calculators' => false,
+                'manage_bridge' => false,
             ], false);
         }
     }
