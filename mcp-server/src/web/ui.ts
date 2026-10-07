@@ -56,6 +56,7 @@ export function siteDetailPage(input:{
   info?:any;
   releases?:any[];
   bridgeAudit?:any[];
+  capabilityState?:{available?:string[];enabled?:string[]};
   message?:string;
   error?:string;
 }): string {
@@ -64,6 +65,8 @@ export function siteDetailPage(input:{
   const releases=Array.isArray(input.releases)?input.releases:[];
   const bridgeAudit=Array.isArray(input.bridgeAudit)?input.bridgeAudit:[];
   const cap=Array.isArray(info.capabilities)?info.capabilities:[];
+  const availableCaps=Array.isArray(input.capabilityState?.available)?input.capabilityState!.available!:[];
+  const enabledCaps=Array.isArray(input.capabilityState?.enabled)?input.capabilityState!.enabled!:cap;
 
   return layout('Manage site', `
   <div class="top"><div class="title"><h1>${esc(s.displayName)}</h1><p>${esc(s.siteUrl)}</p></div><a class="btn" href="/admin/sites">Back to sites</a></div>
@@ -84,6 +87,16 @@ export function siteDetailPage(input:{
     <div><div class="muted">SEO provider</div><div>${esc(info.seo_provider||'—')}</div></div>
     <div class="field full"><div class="muted">Enabled Bridge capabilities</div><div class="code">${esc(cap.join(', ')||'—')}</div></div>
   </div><div class="actions"><form method="post" action="/admin/sites/${esc(s.siteId)}/test"><input type="hidden" name="csrf" value="${esc(input.csrf)}"><button class="btn primary" type="submit">Test connection</button></form></div></div></div>
+
+  <div class="section"><h2>Bridge permissions</h2><div class="card">
+    <div class="muted" style="margin-bottom:12px">Remote permission changes require <span class="code">manage_bridge</span> to have been enabled once in WordPress Admin.</div>
+    <form method="post" action="/admin/sites/${esc(s.siteId)}/permissions"><input type="hidden" name="csrf" value="${esc(input.csrf)}">
+      <div class="form-grid">
+      ${availableCaps.length?availableCaps.map(name=>`<label class="card" style="padding:12px"><input type="checkbox" name="enabled" value="${esc(name)}" ${enabledCaps.includes(name)?'checked':''}> <span class="code">${esc(name)}</span></label>`).join(''):`<div class="muted">Capability state unavailable until the site is connected.</div>`}
+      </div>
+      ${availableCaps.length?`<div class="actions"><button class="btn" type="submit">Save Bridge permissions</button></div>`:''}
+    </form>
+  </div></div>
 
   <div class="section"><h2>Theme releases & rollback points</h2><div class="table-wrap"><table class="table"><thead><tr><th>Release</th><th>Published theme</th><th>Previous theme</th><th>Created</th></tr></thead><tbody>
   ${releases.length?releases.map(r=>`<tr><td class="code">${esc(r.release_id||'—')}</td><td>${esc(r.published_stylesheet||'—')}</td><td>${esc(r.previous_stylesheet||'—')}</td><td>${esc(r.created_at||'—')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">No release records yet.</td></tr>`}
