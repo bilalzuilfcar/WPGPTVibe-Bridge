@@ -68,16 +68,16 @@ export async function handleWeb(req:IncomingMessage,res:ServerResponse,url:URL):
    return true;
  }
 
- const match=url.pathname.match(/^\/admin\/sites\/([0-9a-f-]{36})(?:\/(test|delete))?$/i);
+ const match=url.pathname.match(/^\/admin\/sites\/([0-9a-f-]{36})(?:\/(test|delete|permissions))?$/i);
  if(match){
    const siteId=match[1]!; const action=match[2];
    if(req.method==='GET'&&!action){
      try{
        const full=await getSite(siteId);const {encryptedApiToken:_secret,apiToken:_token,...safe}=full;
-       let info:any=undefined;let releases:any[]=[];let bridgeAudit:any[]=[];let connectionError:string|undefined;
-       try{const results=await Promise.all([callBridge<any>(siteId,'GET','site'),callBridge<any[]>(siteId,'GET','theme/releases'),callBridge<any[]>(siteId,'GET','audit',{limit:25})]);info=results[0];releases=Array.isArray(results[1])?results[1]:[];bridgeAudit=Array.isArray(results[2])?results[2]:[];}
+       let info:any=undefined;let releases:any[]=[];let bridgeAudit:any[]=[];let capabilityState:any=undefined;let connectionError:string|undefined;
+       try{const results=await Promise.all([callBridge<any>(siteId,'GET','site'),callBridge<any[]>(siteId,'GET','theme/releases'),callBridge<any[]>(siteId,'GET','audit',{limit:25}),callBridge<any>(siteId,'GET','bridge/capabilities')]);info=results[0];releases=Array.isArray(results[1])?results[1]:[];bridgeAudit=Array.isArray(results[2])?results[2]:[];capabilityState=results[3];}
        catch(error){connectionError=error instanceof Error?error.message:'Unable to load live site data.';}
-       send(res,200,siteDetailPage({csrf,site:safe,info,releases,bridgeAudit,message:url.searchParams.get('message')||undefined,error:url.searchParams.get('error')||connectionError}));
+       send(res,200,siteDetailPage({csrf,site:safe,info,releases,bridgeAudit,capabilityState,message:url.searchParams.get('message')||undefined,error:url.searchParams.get('error')||connectionError}));
      }
      catch(error){redirect(res,withMessage('/admin/sites','error',error instanceof Error?error.message:'Site not found.'));}
      return true;
@@ -86,6 +86,12 @@ export async function handleWeb(req:IncomingMessage,res:ServerResponse,url:URL):
      const form=await formBody(req);
      if(!verifyCsrf(session,form.get('csrf')||undefined)){send(res,403,'Invalid CSRF token.','text/plain');return true;}
      if(action==='delete'){await deleteSite(siteId);await recordActivity({operation:'site_remove',siteId,target:siteId,status:'success'});redirect(res,'/admin/sites');return true;}
+     if(action==='permissions'){
+       const enabled=form.getAll('enabled').map(String);
+       try{await callBridge(siteId,'PUT','bridge/capabilities',{enabled});await recordActivity({operation:'bridge_permissions_update',siteId,target:'bridge/capabilities',status:'success'});redirect(res,withMessage('/admin/sites/'+siteId,'message','Bridge permissions updated.'));}
+       catch(error){await recordActivity({operation:'bridge_permissions_update',siteId,target:'bridge/capabilities',status:'error',errorMessage:error instanceof Error?error.message:'Permission update failed'});redirect(res,withMessage('/admin/sites/'+siteId,'error',error instanceof Error?error.message:'Permission update failed.'));}
+       return true;
+     }
      if(action==='test'){
        const started=Date.now();
        try{const info=await callBridge<any>(siteId,'GET','site');await recordActivity({operation:'connection_test',siteId,target:'site',status:'success',durationMs:Date.now()-started});redirect(res,withMessage('/admin/sites/'+siteId,'message',`Connected successfully. Bridge ${info.plugin_version||'unknown'}.`));}
