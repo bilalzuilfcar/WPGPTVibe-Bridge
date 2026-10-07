@@ -12,6 +12,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: PHP syntax check
         run: find wordpress-plugin -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Package WordPress plugin
+        run: |
+          mkdir -p build/wpgptvibe-bridge
+          cp -R wordpress-plugin/. build/wpgptvibe-bridge/
+          cd build
+          zip -r wpgptvibe-bridge.zip wpgptvibe-bridge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wpgptvibe-bridge
+          path: build/wpgptvibe-bridge.zip
+          if-no-files-found: error
 
   mcp-server:
     runs-on: ubuntu-latest
