@@ -1,33 +1,78 @@
 import { getSite, updateSiteTelemetry } from '../storage/sites.js';
 
 type JsonObject = Record<string, unknown>;
+export type BridgeMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 type BridgeResponse<T> = {
   ok: boolean;
   data: T;
 };
 
-const ALLOWED_PATHS = new Set([
+const EXACT_PATHS = new Set([
   'site',
+  'audit',
   'theme/files',
   'theme/file',
+  'theme/search',
+  'theme/file/diff',
   'theme/draft/create',
   'theme/draft',
   'theme/draft/preview',
   'theme/file/edit',
   'theme/file/write',
+  'theme/file/delete',
+  'theme/files/batch-edit',
   'theme/draft/publish',
   'theme/rollback',
-  'audit',
+  'content/types',
+  'content',
+  'content/batch-update',
+  'meta/batch-update',
+  'media',
+  'media/upload',
+  'media/import',
+  'seo/batch-update',
+  'cache/purge',
+  'rewrite/flush',
+  'wpcli/status',
+  'wpcli/run',
+  'calculators',
+  'calculators/validate-all',
+  'calculators/batch-update',
 ]);
+
+const DYNAMIC_PATHS = [
+  /^content\/\d+$/,
+  /^content\/\d+\/meta$/,
+  /^media\/\d+$/,
+  /^seo\/\d+$/,
+  /^calculators\/[a-z0-9-]+$/,
+  /^calculators\/[a-z0-9-]+\/validate$/,
+  /^calculators\/[a-z0-9-]+\/test$/,
+];
+
+function pathAllowed(path: string): boolean {
+  return EXACT_PATHS.has(path) || DYNAMIC_PATHS.some((pattern) => pattern.test(path));
+}
+
+export class BridgeError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'BridgeError';
+  }
+}
 
 export async function callBridge<T>(
   siteId: string,
-  method: 'GET' | 'POST',
+  method: BridgeMethod,
   path: string,
   params?: JsonObject,
 ): Promise<T> {
-  if (!ALLOWED_PATHS.has(path)) {
+  if (!pathAllowed(path)) {
     throw new Error(`Bridge path is not allowlisted: ${path}`);
   }
 
@@ -49,13 +94,12 @@ export async function callBridge<T>(
 
   if (method === 'GET' && params) {
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, String(value));
-      }
+      if (value === undefined || value === null || value === '') continue;
+      url.searchParams.set(key, Array.isArray(value) ? value.join(',') : String(value));
     }
-  } else if (method === 'POST') {
+  } else if (params) {
     headers['content-type'] = 'application/json';
-    init.body = JSON.stringify(params ?? {});
+    init.body = JSON.stringify(params);
   }
 
   const response = await fetch(url, init);
@@ -65,24 +109,23 @@ export async function callBridge<T>(
   try {
     payload = text ? JSON.parse(text) : null;
   } catch {
-    throw new Error(`Bridge returned non-JSON HTTP ${response.status}.`);
+    throw new BridgeError(`Bridge returned non-JSON HTTP ${response.status}.`, response.status);
   }
 
   if (!response.ok) {
-    const message =
-      typeof payload === 'object' && payload && 'message' in payload
-        ? String((payload as { message?: unknown }).message)
-        : `Bridge HTTP ${response.status}`;
-    throw new Error(message);
+    const object = typeof payload === 'object' && payload ? payload as Record<string, unknown> : {};
+    const message = typeof object.message === 'string' ? object.message : `Bridge HTTP ${response.status}`;
+    const code = typeof object.code === 'string' ? object.code : undefined;
+    throw new BridgeError(message, response.status, code);
   }
 
   if (!payload || typeof payload !== 'object' || !('ok' in payload) || !('data' in payload)) {
-    throw new Error('Bridge returned an unexpected response envelope.');
+    throw new BridgeError('Bridge returned an unexpected response envelope.', response.status);
   }
 
   const bridge = payload as BridgeResponse<T>;
   if (!bridge.ok) {
-    throw new Error('Bridge reported an unsuccessful operation.');
+    throw new BridgeError('Bridge reported an unsuccessful operation.', response.status);
   }
 
   if (path === 'site' && bridge.data && typeof bridge.data === 'object') {
