@@ -24,7 +24,7 @@ const server = createHttpServer(async (req, res) => {
 
   if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, service: 'wpgptvibe-mcp', version: '0.1.0' }));
+    res.end(JSON.stringify({ ok: true, service: 'wpgptvibe-mcp', version: '0.2.0', browser_testing: config.browserTesting }));
     return;
   }
 
