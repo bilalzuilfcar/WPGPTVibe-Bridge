@@ -1,5 +1,6 @@
 import { isBridgePathAllowed } from '../security/policy.js';
 import { getSite, updateSiteTelemetry } from '../storage/sites.js';
+import { recordActivity } from '../storage/activity.js';
 
 type JsonObject = Record<string, unknown>;
 export type BridgeMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -56,7 +57,14 @@ export async function callBridge<T>(
     init.body = JSON.stringify(params);
   }
 
-  const response = await fetch(url, init);
+  const startedAt = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    await recordActivity({ siteId, operation: `bridge:${method}`, target: path, status: 'error', durationMs: Date.now() - startedAt, errorMessage: error instanceof Error ? error.message : 'Network error' });
+    throw error;
+  }
   const text = await response.text();
 
   let payload: unknown;
@@ -70,6 +78,7 @@ export async function callBridge<T>(
     const object = typeof payload === 'object' && payload ? payload as Record<string, unknown> : {};
     const message = typeof object.message === 'string' ? object.message : `Bridge HTTP ${response.status}`;
     const code = typeof object.code === 'string' ? object.code : undefined;
+    await recordActivity({ siteId, operation: `bridge:${method}`, target: path, status: 'error', durationMs: Date.now() - startedAt, errorMessage: message });
     throw new BridgeError(message, response.status, code);
   }
 
@@ -91,5 +100,6 @@ export async function callBridge<T>(
     });
   }
 
+  await recordActivity({ siteId, operation: `bridge:${method}`, target: path, status: 'success', durationMs: Date.now() - startedAt });
   return bridge.data;
 }
