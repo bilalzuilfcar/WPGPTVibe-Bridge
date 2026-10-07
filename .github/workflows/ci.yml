@@ -26,6 +26,19 @@ jobs:
 
   app:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: wpgptvibe
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     defaults:
       run:
         working-directory: mcp-server
@@ -43,6 +56,7 @@ jobs:
           MCP_API_KEY: 0123456789abcdef0123456789abcdef
           WPGPTVIBE_MASTER_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           WPGPTVIBE_SESSION_SECRET: abcdef0123456789abcdef0123456789abcdef0123456789
+          DATABASE_URL: mysql://root:rootpass@127.0.0.1:3306/wpgptvibe
         run: |
           node dist/index.js > /tmp/wpgptvibe.log 2>&1 &
           APP_PID=$!
