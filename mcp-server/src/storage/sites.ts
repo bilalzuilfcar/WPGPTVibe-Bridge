@@ -205,3 +205,39 @@ export async function updateSiteTelemetry(
   data.sites[index] = { ...data.sites[index]!, ...patch };
   await writeFile(data);
 }
+
+
+export async function importLegacySitesFromFile(): Promise<{imported:number;skipped:number}> {
+  if (!databaseEnabled()) {
+    throw new Error('DATABASE_URL is not configured.');
+  }
+
+  const legacy = await readFile();
+  let imported = 0;
+  let skipped = 0;
+
+  for (const site of legacy.sites) {
+    try {
+      await upsertSite({
+        siteId: site.siteId,
+        displayName: site.displayName,
+        siteUrl: site.siteUrl,
+        apiToken: decryptSecret(site.encryptedApiToken),
+        permissions: site.permissions,
+        pluginVersion: site.pluginVersion,
+      });
+      if (site.lastSeen) {
+        await updateSiteTelemetry(site.siteId, {
+          lastSeen: site.lastSeen,
+          pluginVersion: site.pluginVersion,
+          permissions: site.permissions,
+        });
+      }
+      imported += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+
+  return { imported, skipped };
+}
