@@ -7,6 +7,7 @@ const EXACT_BRIDGE_PATHS = new Set([
   'theme/file/diff',
   'theme/draft/create',
   'theme/draft',
+  'theme/releases',
   'theme/draft/preview',
   'theme/file/edit',
   'theme/file/write',
