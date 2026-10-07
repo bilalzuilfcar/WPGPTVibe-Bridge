@@ -1,3 +1,4 @@
+import { isBridgePathAllowed } from '../security/policy.js';
 import { getSite, updateSiteTelemetry } from '../storage/sites.js';
 
 type JsonObject = Record<string, unknown>;
@@ -7,53 +8,6 @@ type BridgeResponse<T> = {
   ok: boolean;
   data: T;
 };
-
-const EXACT_PATHS = new Set([
-  'site',
-  'audit',
-  'theme/files',
-  'theme/file',
-  'theme/search',
-  'theme/file/diff',
-  'theme/draft/create',
-  'theme/draft',
-  'theme/draft/preview',
-  'theme/file/edit',
-  'theme/file/write',
-  'theme/file/delete',
-  'theme/files/batch-edit',
-  'theme/draft/publish',
-  'theme/rollback',
-  'content/types',
-  'content',
-  'content/batch-update',
-  'meta/batch-update',
-  'media',
-  'media/upload',
-  'media/import',
-  'seo/batch-update',
-  'cache/purge',
-  'rewrite/flush',
-  'wpcli/status',
-  'wpcli/run',
-  'calculators',
-  'calculators/validate-all',
-  'calculators/batch-update',
-]);
-
-const DYNAMIC_PATHS = [
-  /^content\/\d+$/,
-  /^content\/\d+\/meta$/,
-  /^media\/\d+$/,
-  /^seo\/\d+$/,
-  /^calculators\/[a-z0-9-]+$/,
-  /^calculators\/[a-z0-9-]+\/validate$/,
-  /^calculators\/[a-z0-9-]+\/test$/,
-];
-
-function pathAllowed(path: string): boolean {
-  return EXACT_PATHS.has(path) || DYNAMIC_PATHS.some((pattern) => pattern.test(path));
-}
 
 export class BridgeError extends Error {
   constructor(
@@ -72,7 +26,7 @@ export async function callBridge<T>(
   path: string,
   params?: JsonObject,
 ): Promise<T> {
-  if (!pathAllowed(path)) {
+  if (!isBridgePathAllowed(path)) {
     throw new Error(`Bridge path is not allowlisted: ${path}`);
   }
 
