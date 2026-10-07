@@ -1,6 +1,7 @@
 const EXACT_BRIDGE_PATHS = new Set([
   'site',
   'audit',
+  'bridge/capabilities',
   'theme/files',
   'theme/file',
   'theme/search',
