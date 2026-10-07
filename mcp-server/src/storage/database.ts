@@ -63,7 +63,7 @@ export async function ensureSchema(): Promise<void> {
   initialized = true;
 }
 
-export async function dbRows<T extends RowDataPacket[]>(sql: string, values: unknown[] = []): Promise<T> {
+export async function dbRows<T extends RowDataPacket[]>(sql: string, values: any[] = []): Promise<T> {
   await ensureSchema();
   const [rows] = await getPool().execute<T>(sql, values);
   return rows;
