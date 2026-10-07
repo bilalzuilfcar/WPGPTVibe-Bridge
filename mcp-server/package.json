@@ -1,6 +1,6 @@
 {
-  "name": "wpgptvibe-mcp",
-  "version": "0.2.0",
+  "name": "wpgptvibe",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,12 +12,14 @@
     "start": "node dist/index.js",
     "site:add": "tsx src/cli/add-site.ts",
     "site:list": "tsx src/cli/list-sites.ts",
+    "admin:hash-password": "tsx src/cli/hash-password.ts",
     "test": "tsx --test src/**/*.test.ts",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
+    "mysql2": "^3.15.0",
     "zod": "^4.2.0"
   },
   "optionalDependencies": {
