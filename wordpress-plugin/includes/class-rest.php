@@ -14,6 +14,8 @@ final class WPGPTVibe_REST {
     public static function routes(): void {
         self::get('/site', 'read_site', [self::class, 'site_info']);
         self::get('/audit', 'read_site', [self::class, 'audit']);
+        self::get('/bridge/capabilities', 'read_site', [self::class, 'bridge_capabilities']);
+        self::put('/bridge/capabilities', 'manage_bridge', [self::class, 'update_bridge_capabilities']);
 
         self::get('/theme/files', 'read_theme_files', [self::class, 'list_files']);
         self::get('/theme/file', 'read_theme_files', [self::class, 'read_file']);
@@ -120,6 +122,25 @@ final class WPGPTVibe_REST {
 
     public static function audit(WP_REST_Request $request): WP_REST_Response {
         return self::ok(WPGPTVibe_Audit_Log::recent(max(1, min(200, (int) ($request->get_param('limit') ?: 50)))));
+    }
+
+    public static function bridge_capabilities(): WP_REST_Response {
+        return self::ok([
+            'available' => WPGPTVibe_Auth::CAPABILITIES,
+            'enabled' => WPGPTVibe_Auth::enabled_capabilities(),
+        ]);
+    }
+
+    public static function update_bridge_capabilities(WP_REST_Request $request): WP_REST_Response {
+        $enabled = self::array_param($request, 'enabled');
+        $submitted = [];
+        foreach ($enabled as $capability) {
+            if (is_string($capability) && in_array($capability, WPGPTVibe_Auth::CAPABILITIES, true)) {
+                $submitted[$capability] = true;
+            }
+        }
+        WPGPTVibe_Auth::update_capabilities($submitted);
+        return self::bridge_capabilities();
     }
 
     public static function list_files(WP_REST_Request $request) {
