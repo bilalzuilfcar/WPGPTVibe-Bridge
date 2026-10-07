@@ -54,7 +54,7 @@ async function registeredSiteUrl(id: string, path: string): Promise<string> {
 }
 
 export function createServer(): McpServer {
-  const server = new McpServer({ name: 'wpgptvibe-mcp', version: '0.2.0' });
+  const server = new McpServer({ name: 'wpgptvibe-mcp', version: '0.3.0' });
 
   server.registerTool('list_sites', {
     description: 'List connected WordPress sites without exposing API tokens.',
@@ -117,6 +117,11 @@ export function createServer(): McpServer {
     description: 'Get current draft-theme status.',
     inputSchema: z.object({ site_id: siteId }),
   }, async ({ site_id }) => execute(() => callBridge(site_id, 'GET', 'theme/draft')));
+
+  server.registerTool('list_theme_releases', {
+    description: 'List WPGPTVibe theme releases and rollback records for a site.',
+    inputSchema: z.object({ site_id: siteId }),
+  }, async ({ site_id }) => execute(() => callBridge(site_id, 'GET', 'theme/releases')));
 
   server.registerTool('get_preview_url', {
     description: 'Create a short-lived preview URL for the current draft theme.',
