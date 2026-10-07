@@ -5,7 +5,7 @@ import { listActivity, recordActivity } from '../storage/activity.js';
 import { deleteSite, getSite, listSites, upsertSite } from '../storage/sites.js';
 import { callBridge } from '../wordpress/client.js';
 import { adminCookie, clearAdminCookie, createAdminSession, csrfToken, readAdminSession, verifyAdminPassword, verifyCsrf } from './auth.js';
-import { activityPage, dashboardPage, loginPage, siteFormPage, sitesPage } from './ui.js';
+import { activityPage, dashboardPage, loginPage, siteDetailPage, siteFormPage, sitesPage } from './ui.js';
 
 const MAX_BODY=64*1024;
 
@@ -68,7 +68,13 @@ export async function handleWeb(req:IncomingMessage,res:ServerResponse,url:URL):
  if(match){
    const siteId=match[1]!; const action=match[2];
    if(req.method==='GET'&&!action){
-     try{const full=await getSite(siteId);const {encryptedApiToken:_secret,apiToken:_token,...safe}=full;send(res,200,siteFormPage(csrf,safe,url.searchParams.get('message')||undefined,url.searchParams.get('error')||undefined));}
+     try{
+       const full=await getSite(siteId);const {encryptedApiToken:_secret,apiToken:_token,...safe}=full;
+       let info:any=undefined;let releases:any[]=[];let bridgeAudit:any[]=[];let connectionError:string|undefined;
+       try{const results=await Promise.all([callBridge<any>(siteId,'GET','site'),callBridge<any[]>(siteId,'GET','theme/releases'),callBridge<any[]>(siteId,'GET','audit',{limit:25})]);info=results[0];releases=Array.isArray(results[1])?results[1]:[];bridgeAudit=Array.isArray(results[2])?results[2]:[];}
+       catch(error){connectionError=error instanceof Error?error.message:'Unable to load live site data.';}
+       send(res,200,siteDetailPage({csrf,site:safe,info,releases,bridgeAudit,message:url.searchParams.get('message')||undefined,error:url.searchParams.get('error')||connectionError}));
+     }
      catch(error){redirect(res,withMessage('/admin/sites','error',error instanceof Error?error.message:'Site not found.'));}
      return true;
    }
