@@ -69,7 +69,7 @@ export async function dbRows<T extends RowDataPacket[]>(sql: string, values: any
   return rows;
 }
 
-export async function dbExecute(sql: string, values: unknown[] = []): Promise<void> {
+export async function dbExecute(sql: string, values: any[] = []): Promise<void> {
   await ensureSchema();
   await getPool().execute(sql, values);
 }
