@@ -25,6 +25,7 @@ final class WPGPTVibe_REST {
         self::post('/theme/files/batch-edit', 'edit_theme_files', [self::class, 'batch_edit_files']);
         self::post('/theme/draft/create', 'create_draft_themes', [self::class, 'create_draft']);
         self::get('/theme/draft', 'read_theme_files', [self::class, 'draft_status']);
+        self::get('/theme/releases', 'read_theme_files', [self::class, 'theme_releases']);
         self::get('/theme/draft/preview', 'read_theme_files', [self::class, 'draft_preview']);
         self::post('/theme/draft/publish', 'publish_themes', [self::class, 'publish_draft']);
         self::post('/theme/rollback', 'rollback_themes', [self::class, 'rollback_theme']);
@@ -192,6 +193,10 @@ final class WPGPTVibe_REST {
 
     public static function draft_preview() {
         return self::attempt(static fn() => WPGPTVibe_Theme_Manager::preview_url());
+    }
+
+    public static function theme_releases() {
+        return self::attempt(static fn() => WPGPTVibe_Theme_Manager::releases());
     }
 
     public static function publish_draft(WP_REST_Request $request) {
