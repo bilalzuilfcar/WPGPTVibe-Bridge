@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wpgptvibe
+      MYSQL_USER: wpgptvibe
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - wpgptvibe_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost","-u","root","-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./mcp-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DATABASE_URL: mysql://wpgptvibe:${MYSQL_PASSWORD}@mysql:3306/wpgptvibe
+      MCP_API_KEY: ${MCP_API_KEY:?set MCP_API_KEY}
+      WPGPTVIBE_MASTER_KEY: ${WPGPTVIBE_MASTER_KEY:?set WPGPTVIBE_MASTER_KEY}
+      WPGPTVIBE_SESSION_SECRET: ${WPGPTVIBE_SESSION_SECRET:?set WPGPTVIBE_SESSION_SECRET}
+      WPGPTVIBE_ADMIN_USERNAME: ${WPGPTVIBE_ADMIN_USERNAME:-admin}
+      WPGPTVIBE_ADMIN_PASSWORD_HASH: ${WPGPTVIBE_ADMIN_PASSWORD_HASH:?set WPGPTVIBE_ADMIN_PASSWORD_HASH}
+      WPGPTVIBE_BROWSER_TESTING: ${WPGPTVIBE_BROWSER_TESTING:-false}
+    ports:
+      - "8787:8787"
+
+volumes:
+  wpgptvibe_mysql:
