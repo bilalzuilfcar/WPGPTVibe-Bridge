@@ -12,6 +12,7 @@
     "start": "node dist/index.js",
     "site:add": "tsx src/cli/add-site.ts",
     "site:list": "tsx src/cli/list-sites.ts",
+    "test": "tsx --test src/**/*.test.ts",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
