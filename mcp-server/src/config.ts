@@ -36,6 +36,9 @@ export const config = {
   cookieSecure: nodeEnv === 'production' || /^(1|true|yes)$/i.test(process.env.WPGPTVIBE_COOKIE_SECURE ?? ''),
   browserTesting: /^(1|true|yes)$/i.test(process.env.WPGPTVIBE_BROWSER_TESTING ?? ''),
   browserTimeoutMs: Math.max(3000, Math.min(60000, Number(process.env.WPGPTVIBE_BROWSER_TIMEOUT_MS ?? 15000))),
+  mcpMaxBodyBytes: Math.max(65536, Math.min(16 * 1024 * 1024, Number(process.env.WPGPTVIBE_MCP_MAX_BODY_BYTES ?? 4 * 1024 * 1024))),
+  mcpRequestsPerMinute: Math.max(10, Math.min(1000, Number(process.env.WPGPTVIBE_MCP_REQUESTS_PER_MINUTE ?? 240))),
+  adminLoginAttemptsPer15Minutes: Math.max(3, Math.min(100, Number(process.env.WPGPTVIBE_ADMIN_LOGIN_ATTEMPTS ?? 10))),
 };
 
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
@@ -52,4 +55,8 @@ if (config.nodeEnv === 'production' && !config.databaseUrl) {
 
 if (config.nodeEnv === 'production' && !config.adminPasswordHash) {
   console.warn('[wpgptvibe] Admin dashboard login is disabled until WPGPTVIBE_ADMIN_PASSWORD_HASH is configured.');
+}
+
+if (!Number.isFinite(config.mcpMaxBodyBytes) || !Number.isFinite(config.mcpRequestsPerMinute) || !Number.isFinite(config.adminLoginAttemptsPer15Minutes)) {
+  throw new Error('WPGPTVibe numeric security limits must be valid numbers.');
 }
