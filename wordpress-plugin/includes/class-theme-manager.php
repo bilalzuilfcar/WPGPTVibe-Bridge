@@ -264,6 +264,20 @@ final class WPGPTVibe_Theme_Manager {
         ];
     }
 
+    public static function releases(): array {
+        $releases = get_option(self::RELEASES_OPTION, []);
+        if (!is_array($releases)) {
+            return [];
+        }
+
+        $rows = array_values($releases);
+        usort($rows, static function (array $a, array $b): int {
+            return strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? ''));
+        });
+
+        return $rows;
+    }
+
     public static function rollback(string $release_id): array {
         $releases = get_option(self::RELEASES_OPTION, []);
         if (!is_array($releases) || empty($releases[$release_id]['previous_stylesheet'])) {
