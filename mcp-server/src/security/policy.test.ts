@@ -5,6 +5,7 @@ import { isBridgePathAllowed, resolveRegisteredSitePath } from './policy.js';
 test('bridge path policy allows known routes and rejects arbitrary endpoints', () => {
   assert.equal(isBridgePathAllowed('site'), true);
   assert.equal(isBridgePathAllowed('content/123'), true);
+  assert.equal(isBridgePathAllowed('theme/releases'), true);
   assert.equal(isBridgePathAllowed('content/123/meta'), true);
   assert.equal(isBridgePathAllowed('calculators/speeds-and-feeds/validate'), true);
   assert.equal(isBridgePathAllowed('wp-json/wp/v2/users'), false);
