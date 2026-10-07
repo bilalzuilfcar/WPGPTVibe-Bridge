@@ -4,6 +4,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { config } from './config.js';
 import { closeDatabase, ensureSchema } from './storage/database.js';
+import { checkRateLimit, requestIdentity } from './security/rate-limit.js';
 import { createServer as createMcpServer } from './server.js';
 import { handleWeb } from './web/router.js';
 
@@ -30,6 +31,25 @@ const server = createHttpServer(async (req, res) => {
     if (url.pathname !== '/mcp') {
       res.writeHead(404, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
+
+    const identity = requestIdentity(req.headers, req.socket.remoteAddress);
+    const rate = checkRateLimit('mcp:' + identity, config.mcpRequestsPerMinute, 60_000);
+    if (!rate.ok) {
+      res.writeHead(429, {
+        'content-type': 'application/json',
+        'cache-control': 'no-store',
+        'retry-after': String(rate.retryAfterSeconds),
+      });
+      res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
+      return;
+    }
+
+    const contentLength = Number(req.headers['content-length'] ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > config.mcpMaxBodyBytes) {
+      res.writeHead(413, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ error: 'MCP request body too large' }));
       return;
     }
 
