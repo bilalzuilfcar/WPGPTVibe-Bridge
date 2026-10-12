@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPGPTVibe Bridge
  * Description: Secure WordPress REST bridge for WPGPTVibe MCP.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: SPTIO Smart Solutions
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WPGPTVIBE_VERSION', '0.3.0');
+define('WPGPTVIBE_VERSION', '0.4.0');
 define('WPGPTVIBE_FILE', __FILE__);
 define('WPGPTVIBE_DIR', plugin_dir_path(__FILE__));
 define('WPGPTVIBE_URL', plugin_dir_url(__FILE__));
@@ -35,14 +35,28 @@ require_once WPGPTVIBE_DIR . 'includes/class-cache-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-wpcli-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-calculator-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-rest.php';
+require_once WPGPTVIBE_DIR . 'includes/vendor-autoload.php';
+require_once WPGPTVIBE_DIR . 'includes/class-block-manager.php';
+require_once WPGPTVIBE_DIR . 'includes/class-patterns.php';
+require_once WPGPTVIBE_DIR . 'includes/class-operation-store.php';
+require_once WPGPTVIBE_DIR . 'includes/class-oauth-storage.php';
+require_once WPGPTVIBE_DIR . 'includes/class-oauth.php';
+require_once WPGPTVIBE_DIR . 'includes/class-mcp-tools.php';
+require_once WPGPTVIBE_DIR . 'includes/class-mcp.php';
 require_once WPGPTVIBE_DIR . 'admin/class-admin.php';
 
 register_activation_hook(__FILE__, ['WPGPTVibe_Auth', 'activate']);
 
 add_action('plugins_loaded', static function (): void {
     WPGPTVibe_REST::init();
+    WPGPTVibe_Patterns::init();
+    WPGPTVibe_OAuth::init();
+    WPGPTVibe_MCP::init();
+    WPGPTVibe_Operation_Store::init();
 
     if (is_admin()) {
         WPGPTVibe_Admin::init();
     }
 });
+
+register_deactivation_hook(__FILE__, static function(): void {wp_clear_scheduled_hook('wpgptvibe_cleanup_operations');});

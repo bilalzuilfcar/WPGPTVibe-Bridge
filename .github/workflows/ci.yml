@@ -2,20 +2,53 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/direct-wordpress-mcp]
   pull_request:
 
 jobs:
   wordpress-plugin:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test-only-password
+          MYSQL_DATABASE: wpgptvibe_test
+        ports: [3306:3306]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptest-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, dom
+      - name: Prepare disposable WordPress
+        run: |
+          curl -fsSL https://wordpress.org/latest.zip -o /tmp/wordpress.zip
+          unzip -q /tmp/wordpress.zip -d /tmp/wpgptvibe-core
+          cp -R wordpress-plugin /tmp/wpgptvibe-core/wordpress/wp-content/plugins/wpgptvibe-bridge
+          cp wordpress-plugin/tests/ci-wp-config.php /tmp/wpgptvibe-core/wordpress/wp-config.php
+          php -r "define('WP_INSTALLING', true); require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/upgrade.php'; wp_install('WPGPTVibe Test', 'admin', 'test@example.com', true, '', 'test-only-password'); update_option('permalink_structure', '/%postname%/');"
+          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/plugin.php'; activate_plugin('wpgptvibe-bridge/wpgptvibe-bridge.php');"
+      - name: Plugin behavioral and editor tests
+        env:
+          WPGPTVIBE_WP_CORE: /tmp/wpgptvibe-core/wordpress
+          WPGPTVIBE_TEST_SITE: '1'
+        run: |
+          php wordpress-plugin/tests/recovery.php
+          node wordpress-plugin/tests/editor-check.cjs
+          php wordpress-plugin/tests/wordpress-integration.php
       - name: PHP syntax check
         run: find wordpress-plugin -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Package WordPress plugin
         run: |
           mkdir -p build/wpgptvibe-bridge
           cp -R wordpress-plugin/. build/wpgptvibe-bridge/
+          python -c "import shutil; shutil.rmtree('build/wpgptvibe-bridge/tests')"
           cd build
           zip -r wpgptvibe-bridge.zip wpgptvibe-bridge
       - uses: actions/upload-artifact@v4

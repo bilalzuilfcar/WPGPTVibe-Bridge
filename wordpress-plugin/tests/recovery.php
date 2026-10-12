@@ -1,0 +1,28 @@
+<?php
+require __DIR__.'/mcp.php';
+$epoch=(string)get_option('wpgptvibe_oauth_epoch','0');
+$code=WPGPTVibe_OAuth::issue_code($params,1);$exchange['code']=$code;$issued=WPGPTVibe_OAuth::exchange($exchange);
+$refresh=['grant_type'=>'refresh_token','client_id'=>$params['client_id'],'refresh_token'=>$issued['body']['refresh_token'],'resource'=>$params['resource']];
+$rotated=WPGPTVibe_OAuth::exchange($refresh);
+check($rotated['status']===200,'refresh token rotates');
+check(WPGPTVibe_OAuth::exchange($refresh)['status']===400,'used refresh token cannot be replayed');
+$GLOBALS['options']['wpgptvibe_capabilities']['edit_layout']=true;
+$identity['scopes'][]='pages:publish';
+$GLOBALS['posts'][1]->post_status='draft';$p=WPGPTVibe_Block_Manager::get(1);
+$block=['name'=>'wpgptvibe/text','attributes'=>['heading'=>'Editable','body'=>'<p>Original content.</p>']];
+$insert=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>4,'method'=>'tools/call','params'=>['name'=>'apply_page_changes','arguments'=>['id'=>1,'expected_hash'=>$p['hash'],'operations'=>[['type'=>'insert','path'=>[1],'block'=>$block]],'operation_id'=>'insert-section-1']]],$identity);
+check(empty($insert['result']['isError']),'native editable section inserted through MCP');
+$tree=WPGPTVibe_Block_Manager::get(1);
+check($tree['blocks'][1]['attrs']['heading']==='Editable','section content remains in editable attributes');
+$GLOBALS['meta'][1]['_wpgptvibe_content_only']=true;
+rejects(fn()=>WPGPTVibe_Block_Manager::preview(1,$tree['hash'],[['type'=>'duplicate','path'=>[1]]]),'Unlock');
+$update=WPGPTVibe_Block_Manager::change(1,$tree['hash'],[['type'=>'update','path'=>[1],'attributes'=>['heading'=>'Changed by user']]],false);
+check($update['blocks'][1]['attrs']['heading']==='Changed by user','protected layout still permits text updates');
+rejects(fn()=>WPGPTVibe_Block_Manager::preview(1,$update['hash'],[['type'=>'update','path'=>[1],'attributes'=>['padding'=>90]]]),'Content-only');
+$deep=['name'=>'wpgptvibe/section'];for($i=0;$i<22;$i++)$deep=['name'=>'wpgptvibe/section','children'=>[$deep]];
+rejects(fn()=>WPGPTVibe_Block_Manager::new_block($deep),'nesting');
+// Replays must survive transient cache eviction.
+$GLOBALS['transients']=[];
+$count=0;
+$replayed=WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Test']],function()use(&$count){$count++;return ['id'=>456];});
+check($count===0&&$replayed['id']===123,'replay protection survives transient cache eviction');

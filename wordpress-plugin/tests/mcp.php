@@ -1,0 +1,21 @@
+<?php
+require __DIR__.'/oauth.php';
+check(file_exists(dirname(__DIR__).'/includes/class-mcp.php'),'direct MCP transport exists');
+require dirname(__DIR__).'/includes/class-auth.php';
+require dirname(__DIR__).'/includes/class-operation-store.php';
+require dirname(__DIR__).'/includes/class-mcp-tools.php';
+require dirname(__DIR__).'/includes/class-mcp.php';
+WPGPTVibe_Auth::activate();
+$identity=['user_id'=>1,'scopes'=>['site:read','pages:read','pages:write','layout:write'],'client_id'=>'test'];
+$init=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>1,'method'=>'initialize','params'=>['protocolVersion'=>'2025-06-18']],$identity);
+check($init['result']['protocolVersion']==='2025-06-18','MCP negotiates supported protocol');
+check(WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','method'=>'notifications/initialized'],$identity)===null,'notifications have no JSON RPC response');
+$bad=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'1.0','id'=>1,'method'=>'initialize'],$identity);check($bad['error']['code']===-32600,'invalid RPC envelope rejected');
+$list=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>2,'method'=>'tools/list'],$identity);check(count($list['result']['tools'])>=20,'MCP exposes website tools');
+$limited=['user_id'=>1,'scopes'=>['site:read'],'client_id'=>'test'];
+$denied=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>3,'method'=>'tools/call','params'=>['name'=>'get_page_blocks','arguments'=>['id'=>1]]],$limited);
+check($denied['result']['isError']===true,'page read denied without scope');
+$count=0;$first=WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Test']],function()use(&$count){$count++;return ['id'=>123];});
+$second=WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Test']],function()use(&$count){$count++;return ['id'=>456];});
+check($count===1&&$second['id']===123,'mutation retry returns original result');
+rejects(fn()=>WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Different']],fn()=>[]),'different request');

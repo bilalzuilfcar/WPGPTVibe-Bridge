@@ -1,0 +1,4 @@
+bshaffer/oauth2-server-php v1.14.2
+Upstream commit: 1c715c2d2f71254d1c683b8c89a0f16b61ccd0d6
+Source: https://github.com/bshaffer/oauth2-server-php
+License: MIT (included)
