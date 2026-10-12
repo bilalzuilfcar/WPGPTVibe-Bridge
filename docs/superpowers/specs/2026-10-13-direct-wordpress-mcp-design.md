@@ -34,3 +34,32 @@ WordPress settings show the MCP URL, connection status, authorization controls, 
 
 ## Delivery boundary
 A successful CI run is not proof of a working ChatGPT connection. Completion requires an actual authorized ChatGPT-to-WordPress round trip on a test site. No claim of being better than WPVibe until comparable workflows have been verified.
+
+## Advanced editing experience
+These additions are authorized by Bilal's request to choose useful advanced features. Deliver them in stages after the direct connection is reliable.
+
+### Page patterns and brand consistency
+Provide editor-native starter patterns for hero, services, card grids, FAQ and CTA sections. Use the active site's palette, typography and spacing rather than importing another brand's settings. Patterns are editable block compositions, not opaque HTML. Offer unsynced copies by default and explicit synced patterns for shared content. Before modifying a synced pattern, show the pages affected. Detect theme capabilities before offering navigation, header, footer or global-style editing; classic themes require adapters and must not be presented as Full Site Editing compatible.
+
+### Guided editing
+Add a compact WordPress settings screen with Connect ChatGPT, Test connection, Permissions and Recent changes. In the editor, provide clear labels and controls for the supported page sections, duplicate/reorder actions and a preview shortcut. Use existing editor controls first; custom controls must offer keyboard operation and visible focus. Content-only editing is opt-in per template, permits text/link/image updates, and can be disabled by an administrator to unlock layout editing. Do not claim responsive controls exist for every block; expose only supported core or adapter controls.
+
+### Reversible changes and conflict protection
+Return a readable summary and changed-block paths for proposed layout updates before applying them. Require an expected revision/content hash for writes. Make destructive block removals and published-content updates explicit. Save revisions when supported and refuse operations that promise revision recovery if revisions are disabled. An undo tool restores a selected revision with a new audit event; it must not overwrite intervening edits silently. Add operation IDs for mutating calls and replay detection so network retries do not duplicate pages or sections.
+
+### Media and content checks
+Provide image replacement while preserving attachment IDs, alt-text controls and existing links. Add checks for missing alt text, empty buttons, broken heading order and malformed links. Link checking is limited to registered site URLs with bounded requests and safe redirects. Reports identify issues and suggestions rather than claiming accessibility compliance or automatically rewriting copy. SEO fields continue to use existing providers.
+
+### Honest diagnostics
+Show installed editor/theme versions, supported blocks, enabled tools and unsupported builders. Classify connection failures as HTTPS, OAuth, permissions, WordPress REST availability or hosting errors. Show actionable recovery without exposing secrets. Report reconnect requirements after authorization expiry or permission changes.
+
+### Additional acceptance tests
+- Insert and edit a starter pattern without block validation warnings.
+- Update a shared pattern only after presenting affected pages.
+- Duplicate and reorder sections using mouse and keyboard in the editor.
+- Update text/image in a content-only template, then unlock its layout as administrator.
+- Replay a successful operation ID without duplicate mutations; reject reuse with a different payload.
+- Simulate a concurrent human edit and reject the stale MCP write.
+- Restore a revision, audit the restore, and refuse false recovery guarantees when revisions are disabled.
+- Test empty, loading, permission-denied and disconnected screens.
+- Keep plugin assets scoped to its settings/editor surfaces and verify no unnecessary frontend assets.
