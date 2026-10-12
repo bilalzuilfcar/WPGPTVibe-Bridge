@@ -63,6 +63,11 @@ final class WPGPTVibe_Admin {
                 <?php wp_nonce_field('wpgptvibe_disconnect'); ?><input type="hidden" name="action" value="wpgptvibe_disconnect">
                 <?php submit_button('Disconnect All ChatGPT Sessions','secondary'); ?>
             </form>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <?php wp_nonce_field('wpgptvibe_reset_clients'); ?><input type="hidden" name="action" value="wpgptvibe_reset_clients">
+                <p class="description">Reset registrations if connection setup is stuck (all clients must reconnect).</p>
+                <?php submit_button('Reset OAuth Registrations','secondary'); ?>
+            </form>
 
             <?php if ($token): ?>
                 <div class="notice notice-warning">

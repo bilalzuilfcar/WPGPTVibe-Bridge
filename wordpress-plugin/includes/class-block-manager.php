@@ -58,7 +58,16 @@ final class WPGPTVibe_Block_Manager {
                 } elseif ($type === 'update') {
                     $name=$siblings[$index]['blockName'] ?? '';
                     // Editable dynamic blocks save attributes; native/static blocks are never rewritten blindly.
-                    if (!str_starts_with($name, 'wpgptvibe/')) { throw new RuntimeException('Use the WordPress editor to change this native or third-party block. Reordering remains available.'); }
+                    if(in_array($name,['core/paragraph','core/heading'],true)){
+                        $attrs=$operation['attributes']??[];
+                        if(!is_array($attrs)||array_keys($attrs)!==['content']||!is_string($attrs['content'])){throw new RuntimeException('Native text updates require a content string only.');}
+                        if(strlen($attrs['content'])>20000){throw new RuntimeException('Text is too long.');}
+                        $inline=wp_kses($attrs['content'],['a'=>['href'=>true,'title'=>true],'strong'=>[],'em'=>[],'b'=>[],'i'=>[],'br'=>[],'code'=>[],'s'=>[],'sub'=>[],'sup'=>[]]);
+                        if(!preg_match('/^(\s*<(?:p|h[1-6])\b[^>]*>)[\s\S]*(<\/(?:p|h[1-6])>\s*)$/',$siblings[$index]['innerHTML'],$match)){throw new RuntimeException('This text block has complex markup. Edit it in WordPress.');}
+                        $siblings[$index]['innerHTML']=$match[1].$inline.$match[2];$siblings[$index]['innerContent']=[$siblings[$index]['innerHTML']];
+                        $summary[]=['type'=>$type,'path'=>$operation['path']];unset($siblings);continue;
+                    }
+                    if (!str_starts_with($name, 'wpgptvibe/')) { throw new RuntimeException('Use the WordPress editor to change this third-party block. Reordering remains available.'); }
                     $attrs=$operation['attributes'] ?? [];
                     if (!is_array($attrs)) { throw new RuntimeException('Attributes must be an object.'); }
                     if (get_post_meta($id, '_wpgptvibe_content_only', true) && array_diff(array_keys($attrs), ['heading','body','label','url','imageId','imageUrl','alt'])) {
@@ -106,8 +115,18 @@ final class WPGPTVibe_Block_Manager {
         if($depth>20){throw new RuntimeException('Block nesting exceeds 20 levels.');}
         if(!is_array($descriptor['children']??[])){throw new RuntimeException('Block children must be an array.');}
         $name=(string)($descriptor['name']??'');
+        if(in_array($name,['core/paragraph','core/heading'],true)){
+            if(!empty($descriptor['children'])){throw new RuntimeException('A text block cannot contain child blocks.');}
+            $a=$descriptor['attributes']??[];
+            if(!is_array($a)||array_diff(array_keys($a),['content','level'])||!is_string($a['content']??null)){throw new RuntimeException('Native text blocks require content and optional heading level.');}
+            $level=$a['level']??2;if(!is_int($level)||$level<1||$level>6){throw new RuntimeException('Invalid heading level.');}
+            $text=wp_kses($a['content'],['a'=>['href'=>true,'title'=>true],'strong'=>[],'em'=>[],'b'=>[],'i'=>[],'br'=>[],'code'=>[],'s'=>[],'sub'=>[],'sup'=>[]]);
+            $html=$name==='core/paragraph'?'<p>'.$text.'</p>':'<h'.$level.' class="wp-block-heading">'.$text.'</h'.$level.'>';
+            return ['blockName'=>$name,'attrs'=>$name==='core/heading'?['level'=>$level]:[],'innerBlocks'=>[],'innerHTML'=>$html,'innerContent'=>[$html]];
+        }
         if (!in_array($name,WPGPTVibe_Patterns::block_names(),true)) { throw new RuntimeException('Unsupported new block. Use a WPGPTVibe editable block.'); }
         $children=[];
+        if(!empty($descriptor['children'])&&!in_array($name,['wpgptvibe/section','wpgptvibe/columns','wpgptvibe/card'],true)){throw new RuntimeException('This block cannot contain child blocks.');}
         foreach (($descriptor['children']??[]) as $child) { $children[]=self::new_block($child,$depth+1); }
         if (count($children)>100) { throw new RuntimeException('Too many child blocks.'); }
         return ['blockName'=>$name,'attrs'=>WPGPTVibe_Patterns::attributes($name,$descriptor['attributes']??[]),'innerBlocks'=>$children,'innerHTML'=>'','innerContent'=>array_fill(0,count($children),null)];

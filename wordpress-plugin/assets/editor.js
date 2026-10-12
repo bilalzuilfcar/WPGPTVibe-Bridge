@@ -1,7 +1,7 @@
 (function (wp) {
     'use strict';
     const el = wp.element.createElement;
-    const { RichText, InnerBlocks, InspectorControls, MediaUpload, MediaUploadCheck, useBlockProps } = wp.blockEditor;
+    const { RichText, InnerBlocks, InspectorControls, MediaUpload, MediaUploadCheck, useBlockProps, useInnerBlocksProps } = wp.blockEditor;
     const { PanelBody, RangeControl, TextControl, Button, SelectControl, ToggleControl, Notice } = wp.components;
     const names = ['section', 'text', 'image', 'button', 'columns', 'card'];
     names.forEach(function (kind) {
@@ -21,7 +21,8 @@
                 if (!locked) controls.push(el(RangeControl, { label: 'Section spacing', value: a.padding, min: 0, max: 160, onChange: v => props.setAttributes({ padding: v }) }));
                 if (kind === 'columns' && !locked) controls.push(el(RangeControl, { label: 'Columns on desktop', value: a.columns, min: 1, max: 4, onChange: v => props.setAttributes({ columns: v }) }));
                 if (!locked) controls.push(el(SelectControl, { label: 'Text alignment', value: a.align, options: [{label:'Default',value:''},{label:'Left',value:'left'},{label:'Centre',value:'center'},{label:'Right',value:'right'}], onChange: v => props.setAttributes({ align: v }) }));
-                if (!locked) controls.push(el(TextControl, { label: 'Background colour (hex)', value: a.background, onChange: v => { if (!v || /^#[a-f\d]{3}([a-f\d]{3})?$/i.test(v)) props.setAttributes({ background: v }); } }));
+                if (!locked) controls.push(el(TextControl, { label: 'Background colour (hex)', value: a.background, onChange: v => props.setAttributes({ background: v }) }));
+                const innerProps = container ? useInnerBlocksProps({ ...blockProps, style: { ...style, '--wpgptvibe-columns': a.columns } }, { templateLock: locked ? 'contentOnly' : false }) : null;
                 const inspector = el(InspectorControls, {}, el(PanelBody, { title: 'Section settings' }, ...controls));
                 let content = [];
                 if (kind === 'image') {
@@ -35,8 +36,8 @@
                     content.push(el(RichText, { tagName: 'h' + a.level, value: a.heading, placeholder: 'Heading', onChange: v => props.setAttributes({ heading: v }) }));
                     content.push(el(RichText, { tagName: 'div', multiline: 'p', value: a.body, placeholder: 'Write your content here', onChange: v => props.setAttributes({ body: v }) }));
                 }
-                if (container) content.push(el('div', { className: kind === 'columns' ? 'wpgptvibe-columns' : undefined, style: {'--wpgptvibe-columns': a.columns} }, el(InnerBlocks, { templateLock: locked ? 'contentOnly' : false })));
-                return el(wp.element.Fragment, {}, inspector, el('div', blockProps, ...content));
+                if (container) content.push(innerProps.children);
+                return el(wp.element.Fragment, {}, inspector, el('div', innerProps || blockProps, ...content));
             },
             save: container ? () => el(InnerBlocks.Content) : () => null
         });

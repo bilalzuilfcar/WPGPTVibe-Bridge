@@ -10,6 +10,7 @@ final class WPGPTVibe_OAuth {
         add_action('parse_request',[self::class,'well_known'],0);
         add_action('admin_post_wpgptvibe_authorize',[self::class,'authorize']);
         add_action('admin_post_nopriv_wpgptvibe_authorize',[self::class,'authorize']);
+        add_action('admin_post_wpgptvibe_reset_clients',[self::class,'reset_clients_action']);
         add_action('admin_post_wpgptvibe_disconnect',[self::class,'disconnect_action']);
     }
     public static function routes(): void {
@@ -47,6 +48,12 @@ final class WPGPTVibe_OAuth {
         if(($input['token_endpoint_auth_method']??'none')!=='none'){throw new RuntimeException('This connection supports public clients with PKCE.');}
         if(isset($input['grant_types'])&&(!is_array($input['grant_types'])||array_diff($input['grant_types'],['authorization_code','refresh_token']))){throw new RuntimeException('Unsupported grant type.');}
         $clients=get_option('wpgptvibe_oauth_clients',[]);
+        foreach($clients as $existing_id=>$existing){
+            if(empty($existing['authorized'])&&(int)($existing['created']??0)<time()-86400){unset($clients[$existing_id]);continue;}
+            if(($existing['redirect_uri']??'')===$uris[0]){
+                return ['client_id'=>$existing_id,'client_id_issued_at'=>$existing['created'],'redirect_uris'=>$uris,'token_endpoint_auth_method'=>'none','grant_types'=>['authorization_code','refresh_token'],'response_types'=>['code']];
+            }
+        }
         if(count($clients)>=100){throw new RuntimeException('Client limit reached. Remove unused connections first.');}
         $id='wpgv_'.bin2hex(random_bytes(24));
         $clients[$id]=['client_id'=>$id,'redirect_uri'=>$uris[0],'scope'=>implode(' ',self::SCOPES),'client_secret'=>null,'created'=>time()];
@@ -65,6 +72,7 @@ final class WPGPTVibe_OAuth {
     public static function issue_code(array $p,int $user_id): string {
         self::validate_authorization($p);
         if(!user_can(get_userdata($user_id),'manage_options')){throw new RuntimeException('Only a WordPress administrator can authorize this connection.');}
+        $clients=get_option('wpgptvibe_oauth_clients',[]);$clients[$p['client_id']]['authorized']=true;update_option('wpgptvibe_oauth_clients',$clients,false);
         $s=new WPGPTVibe_OAuth_Storage();$s->context=['resource'=>self::resource(),'issuer'=>self::issuer(),'epoch'=>(string)get_option('wpgptvibe_oauth_epoch','0'),'family'=>bin2hex(random_bytes(16))];
         $type=new WPGPTVibeVendor\OAuth2\ResponseType\AuthorizationCode($s,['auth_code_lifetime'=>120]);
         return $type->createAuthorizationCode($p['client_id'],$user_id,$p['redirect_uri'],$p['scope'],$p['code_challenge'],'S256');
@@ -142,5 +150,6 @@ final class WPGPTVibe_OAuth {
         wp_die($html,'Connect WPGPTVibe',['response'=>200]);
     }
     public static function disconnect(): void {update_option('wpgptvibe_oauth_epoch',bin2hex(random_bytes(16)),false);WPGPTVibe_Audit_Log::record('oauth_disconnect','all_connections','success');}
+    public static function reset_clients_action(): void {if(!current_user_can('manage_options')){wp_die('Insufficient permissions.');}check_admin_referer('wpgptvibe_reset_clients');self::disconnect();update_option('wpgptvibe_oauth_clients',[],false);wp_safe_redirect(admin_url('tools.php?page=wpgptvibe'));exit;}
     public static function disconnect_action(): void {if(!current_user_can('manage_options')){wp_die('Insufficient permissions.');}check_admin_referer('wpgptvibe_disconnect');self::disconnect();wp_safe_redirect(admin_url('tools.php?page=wpgptvibe'));exit;}
 }

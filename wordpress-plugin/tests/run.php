@@ -28,6 +28,7 @@ function user_can($user,$cap,...$args){return $user && !($GLOBALS['deny']??false
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
 function wp_unslash($x){return $x;}
 function wp_slash($x){return $x;}
+function wp_kses($x,$allowed){return strip_tags($x,'<a><strong><em><b><i><br><code><s><sub><sup>');}
 function wp_kses_post($x){return preg_replace('#<script.*?</script>#si','',$x);}
 function sanitize_key($x){return preg_replace('/[^a-z0-9_\-]/','',strtolower($x));}
 function sanitize_text_field($x){return strip_tags($x);}
