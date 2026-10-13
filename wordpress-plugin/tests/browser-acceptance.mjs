@@ -7,10 +7,10 @@ const errors=[];page.on('pageerror',e=>errors.push(e.message));
 const base='https://127.0.0.1:8090';
 try {
  await page.goto(base+'/wp-login.php');
- await page.locator('#user_login').fill('admin');
- await page.locator('#user_pass').fill('test-only-password');
- await page.locator('#wp-submit').click();
- await page.waitForURL(/wp-admin/);
+ // Authenticate through WordPress's real login endpoint; editor interaction is the acceptance target.
+ const login=await page.request.post(base+'/wp-login.php',{form:{log:'admin',pwd:'test-only-password','wp-submit':'Log In',redirect_to:base+'/wp-admin/',testcookie:'1'}});
+ assert.match(login.url(),/wp-admin/, 'WordPress login must establish an authenticated test session');
+ await page.goto(base+'/wp-admin/');
  const id=fs.readFileSync('/tmp/wpgptvibe-test-page','utf8').trim();
  await page.goto(base+'/wp-admin/post.php?post='+id+'&action=edit');
  await page.waitForFunction(()=>window.wp?.data?.select('core/block-editor')?.getBlocks()?.length>0);

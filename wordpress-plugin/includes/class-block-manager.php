@@ -23,7 +23,7 @@ final class WPGPTVibe_Block_Manager {
             'editor_url'=>get_edit_post_link($id, 'raw'), 'preview_url'=>get_preview_post_link($id),
             'revisions_enabled'=>wp_revisions_enabled($post),
             'content_only'=>(bool)get_post_meta($id, '_wpgptvibe_content_only', true),
-            'shared_usage'=>$post->post_type==='wp_block'?WPGPTVibe_Shared_Patterns::impact($id):null];
+            'shared_usage'=>$post->post_type==='wp_block'?WPGPTVibe_Shared_Patterns::usage($id):null];
     }
 
     public static function preview(int $id, string $expected_hash, array $operations): array {
@@ -82,6 +82,7 @@ final class WPGPTVibe_Block_Manager {
         }
         self::normalize($blocks);
         $content = serialize_blocks($blocks);
+        if($post->post_type==='wp_block'){WPGPTVibe_Shared_Patterns::assert_acyclic($id,$content);}
         if (strlen($content)>self::MAX_CONTENT) { throw new RuntimeException('Result exceeds the 1 MB editing limit.'); }
         return ['id'=>$id,'before_hash'=>$expected_hash,'hash'=>hash('sha256',$content),'blocks'=>$blocks,'content'=>$content,'changes'=>$summary];
     }
@@ -187,6 +188,7 @@ final class WPGPTVibe_Block_Manager {
             if($post->post_status!=='draft'&&!$confirm_live){throw new RuntimeException('Confirm restoration of published content.');}
             $revision=get_post($revision_id);
             if(!$revision||wp_is_post_revision($revision_id)!==$id){throw new RuntimeException('Revision does not belong to this page.');}
+            if($post->post_type==='wp_block'){WPGPTVibe_Shared_Patterns::assert_acyclic($id,$revision->post_content);}
             wp_save_post_revision($id);
             if(!wp_restore_post_revision($revision_id,['post_content','post_title','post_excerpt'])){throw new RuntimeException('Revision restoration failed.');}
             WPGPTVibe_Audit_Log::record('revision_restore','post:'.$id,'success',['meta'=>['revision_id'=>$revision_id]]);

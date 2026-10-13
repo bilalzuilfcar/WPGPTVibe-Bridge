@@ -28,6 +28,12 @@ final class WPGPTVibe_Shared_Patterns {
         foreach((array)get_option('widget_block',[]) as $widget_id=>$widget){if(is_array($widget)&&self::references((string)($widget['content']??''),$id,[$id])){$affected[]=['type'=>'widget','id'=>(string)$widget_id,'title'=>'Block widget '.$widget_id];}}
         return ['items'=>$affected,'count'=>count($affected),'hash'=>hash('sha256',wp_json_encode($affected)),'complete'=>true];
     }
+    public static function usage(int $id): array {
+        try{return self::impact($id);}catch(RuntimeException $e){return ['items'=>[],'count'=>null,'hash'=>null,'complete'=>false,'error'=>$e->getMessage()];}
+    }
+    public static function assert_acyclic(int $id,string $content): void {
+        if(self::references($content,$id,[$id])){throw new RuntimeException('A shared section cannot contain recursive references to itself.');}
+    }
     public static function list(): array {
         $query=new WP_Query(['post_type'=>'wp_block','post_status'=>['publish','draft','private'],'posts_per_page'=>100,'orderby'=>'modified','order'=>'DESC']);$out=[];
         foreach($query->posts as $p){if(current_user_can('edit_post',$p->ID)){$out[]=['id'=>$p->ID,'title'=>$p->post_title,'status'=>$p->post_status,'hash'=>hash('sha256',$p->post_content),'editor_url'=>get_edit_post_link($p->ID,'raw')];}}
