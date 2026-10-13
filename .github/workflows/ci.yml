@@ -32,8 +32,8 @@ jobs:
           unzip -q /tmp/wordpress.zip -d /tmp/wpgptvibe-core
           cp -R wordpress-plugin /tmp/wpgptvibe-core/wordpress/wp-content/plugins/wpgptvibe-bridge
           cp wordpress-plugin/tests/ci-wp-config.php /tmp/wpgptvibe-core/wordpress/wp-config.php
-          php -r "define('WP_INSTALLING', true); require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/upgrade.php'; wp_install('WPGPTVibe Test', 'admin', 'test@example.com', true, '', 'test-only-password'); update_option('permalink_structure', '/%postname%/');"
-          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/plugin.php'; activate_plugin('wpgptvibe-bridge/wpgptvibe-bridge.php');"
+          php -r "define('WP_INSTALLING', true); require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/upgrade.php'; wp_install('WPGPTVibe Test', 'admin', 'test@example.com', true, '', 'test-only-password'); update_option('permalink_structure', '/%postname%/');"
+          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/plugin.php'; activate_plugin('wpgptvibe-bridge/wpgptvibe-bridge.php');"
       - name: WordPress diagnostics on failure
         if: failure()
         run: cat /tmp/wpgptvibe-core/wordpress/wp-content/debug.log || true
