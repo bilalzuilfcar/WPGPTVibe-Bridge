@@ -6,12 +6,19 @@ if (!defined('ABSPATH')) {
 
 final class WPGPTVibe_Admin {
     public static function init(): void {
+        add_action('admin_enqueue_scripts', [self::class, 'assets']);
         add_action('admin_menu', [self::class, 'menu']);
         add_action('admin_post_wpgptvibe_save_connection', [self::class, 'save_connection']);
         add_action('admin_post_wpgptvibe_generate_token', [self::class, 'generate_token']);
         add_action('admin_post_wpgptvibe_revoke_token', [self::class, 'revoke_token']);
         add_action('admin_post_wpgptvibe_save_capabilities', [self::class, 'save_capabilities']);
         add_action('admin_post_wpgptvibe_save_meta_allowlist', [self::class, 'save_meta_allowlist']);
+    }
+
+    public static function assets(string $hook): void {
+        if($hook!=='tools_page_wpgptvibe'){return;}
+        wp_enqueue_script('wpgptvibe-setup',WPGPTVIBE_URL.'assets/setup.js',[],WPGPTVIBE_VERSION,true);
+        wp_localize_script('wpgptvibe-setup','WPGPTVibeSetup',['mcp'=>WPGPTVibe_OAuth::resource(),'metadata'=>rest_url('wpgptvibe/v1/oauth/resource'),'authorization'=>WPGPTVibe_OAuth::issuer().'/.well-known/oauth-authorization-server']);
     }
 
     public static function menu(): void {
@@ -42,6 +49,8 @@ final class WPGPTVibe_Admin {
             <p>Connect this website directly to ChatGPT. Build editable pages and manage content from one connection.</p>
             <h2>Connect ChatGPT</h2>
             <p><strong>MCP server URL</strong> <code style="user-select:all"><?php echo esc_html(WPGPTVibe_OAuth::resource()); ?></code></p>
+            <p><button type="button" class="button button-secondary" id="wpgptvibe-test-connection">Test Connection</button></p>
+            <p id="wpgptvibe-connection-result" role="status" aria-live="polite"></p>
             <ol><li>In ChatGPT, open Plugins and choose Add custom MCP server.</li><li>Paste the server URL above, select OAuth, then choose dynamic client registration (DCR).</li><li>Use scopes <code>site:read pages:read pages:write layout:write media:write seo:write</code> for page editing. Add publication or theme scopes only when needed.</li><li>Sign in to this WordPress website and review the requested permissions.</li><li>Enable the corresponding permissions below, then ask ChatGPT to inspect the site and create a draft page.</li></ol>
             <p>Pages remain editable in WordPress. Open the page editor, click text, replace images, and use List View to move or duplicate sections.</p>
             <table class="widefat striped" style="max-width:1000px"><tbody>
@@ -49,7 +58,7 @@ final class WPGPTVibe_Admin {
                 <tr><th>WordPress REST endpoint</th><td><a href="<?php echo esc_url(rest_url('wpgptvibe/v1/oauth/resource')); ?>" target="_blank" rel="noopener">Open discovery test</a> (must return JSON)</td></tr>
                 <tr><th>OAuth discovery</th><td><a href="<?php echo esc_url(WPGPTVibe_OAuth::issuer().'/.well-known/oauth-authorization-server'); ?>" target="_blank" rel="noopener">Open authorization metadata</a> (must return JSON)</td></tr>
                 <tr><th>Editor</th><td>WordPress Block Editor. Elementor, Divi and WPBakery pages are preserved and require separate integrations.</td></tr>
-                <tr><th>Registered connections</th><td><?php echo esc_html((string)count(get_option('wpgptvibe_oauth_clients',[]))); ?></td></tr>
+                <tr><th>Connection registrations</th><td><?php echo esc_html((string)count(get_option('wpgptvibe_oauth_clients',[]))); ?></td></tr>
                 <tr><th>Header and footer editing</th><td><?php echo wp_is_block_theme() ? 'Site Editor available through WordPress (MCP template tools are not included in this release).' : 'Classic theme: use the theme’s WordPress controls.'; ?></td></tr>
             </tbody></table>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">

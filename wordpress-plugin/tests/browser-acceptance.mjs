@@ -58,7 +58,9 @@ try {
  await page.goto(base+'/wp-admin/tools.php?page=wpgptvibe');
  await page.getByRole('heading',{name:'Connect ChatGPT',exact:true}).waitFor();
  assert.equal(await page.locator('textarea[name="redirects"]').count(),1);
- console.log('PASS: connection settings load in the real WordPress dashboard');
+ await page.getByRole('button',{name:'Test Connection',exact:true}).click();
+ await page.getByRole('status').filter({hasText:'Your website is ready to connect.'}).waitFor();
+ console.log('PASS: connection settings and connection diagnostics work in the real WordPress dashboard');
  assert.equal(errors.length,0,errors.join('\n'));
  await page.setViewportSize({width:390,height:844});
  await page.goto(base+'/?page_id='+id+'&preview=true');

@@ -15,6 +15,7 @@ $list=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>2,'method'=>'tools/list'],
 $limited=['user_id'=>1,'scopes'=>['site:read'],'client_id'=>'test'];
 $denied=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>3,'method'=>'tools/call','params'=>['name'=>'get_page_blocks','arguments'=>['id'=>1]]],$limited);
 check($denied['result']['isError']===true,'page read denied without scope');
+check(str_contains($denied['result']['_meta']['mcp/www_authenticate'][0]??'', 'insufficient_scope'),'scope denial offers automatic OAuth reauthorization');
 $count=0;$first=WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Test']],function()use(&$count){$count++;return ['id'=>123];});
 $second=WPGPTVibe_Operation_Store::run('operation-123',$identity,['name'=>'create','args'=>['title'=>'Test']],function()use(&$count){$count++;return ['id'=>456];});
 check($count===1&&$second['id']===123,'mutation retry returns original result');

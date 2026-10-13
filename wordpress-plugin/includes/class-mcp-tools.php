@@ -1,5 +1,8 @@
 <?php
 if (!defined('ABSPATH')) { exit; }
+final class WPGPTVibe_Scope_Exception extends RuntimeException {
+    public function __construct(public string $scope){parent::__construct('Connection needs the '.$scope.' permission. Reauthorize ChatGPT.');}
+}
 final class WPGPTVibe_MCP_Tools {
     private static function string(string $description='',array $extra=[]): array{return array_merge(['type'=>'string','description'=>$description],$extra);}
     private static function integer(): array{return ['type'=>'integer','minimum'=>1];}
@@ -55,7 +58,7 @@ final class WPGPTVibe_MCP_Tools {
     public static function catalog(): array {return array_values(array_map(static function($d){unset($d['scope'],$d['capability'],$d['handler'],$d['wp_cap'],$d['write']);return $d;},self::definitions()));}
     public static function execute(string $name,array $arguments,array $identity): array {
         $definitions=self::definitions();if(!isset($definitions[$name])){throw new RuntimeException('Unknown WordPress tool.');}$d=$definitions[$name];
-        if(!in_array($d['scope'],$identity['scopes'],true)){throw new RuntimeException('Connection needs the '.$d['scope'].' permission. Reauthorize ChatGPT.');}
+        if(!in_array($d['scope'],$identity['scopes'],true)){throw new WPGPTVibe_Scope_Exception($d['scope']);}
         wp_set_current_user($identity['user_id']);
         if(!current_user_can($d['wp_cap'])||!in_array($d['capability'],WPGPTVibe_Auth::enabled_capabilities(),true)){throw new RuntimeException('Enable the required WordPress permission in Tools → WPGPTVibe.');}
         self::validate($arguments,$d['inputSchema']);

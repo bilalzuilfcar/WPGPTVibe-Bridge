@@ -23,7 +23,10 @@ final class WPGPTVibe_MCP {
         elseif($method==='tools/call'){
             if(!is_string($params['name']??null)||!is_array($params['arguments']??[])){return ['jsonrpc'=>'2.0','id'=>$id,'error'=>['code'=>-32602,'message'=>'Invalid tool call']];}
             try{$data=WPGPTVibe_MCP_Tools::execute($params['name'],$params['arguments']??[],$identity);$result=['content'=>[['type'=>'text','text'=>wp_json_encode($data)]],'structuredContent'=>['result'=>$data]];}
-            catch(Throwable $e){$result=['isError'=>true,'content'=>[['type'=>'text','text'=>$e instanceof RuntimeException?$e->getMessage():'Unable to complete this WordPress operation. Check the connection and permissions.']]];}
+            catch(Throwable $e){
+                $result=['isError'=>true,'content'=>[['type'=>'text','text'=>$e instanceof RuntimeException?$e->getMessage():'Unable to complete this WordPress operation. Check the connection and permissions.']]];
+                if($e instanceof WPGPTVibe_Scope_Exception){$result['_meta']=['mcp/www_authenticate'=>['Bearer resource_metadata="'.rest_url('wpgptvibe/v1/oauth/resource').'", error="insufficient_scope", scope="'.$e->scope.'", error_description="Authorize the required WordPress tool permission."']];}
+            }
         }else{return ['jsonrpc'=>'2.0','id'=>$id,'error'=>['code'=>-32601,'message'=>'Method not found']];}
         return ['jsonrpc'=>'2.0','id'=>$id,'result'=>$result];
     }
