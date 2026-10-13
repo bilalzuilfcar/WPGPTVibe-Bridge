@@ -23,3 +23,11 @@ verify($token['status']===200,'real OAuth storage exchanges PKCE code');
 verify(WPGPTVibe_OAuth::identity($token['body']['access_token'])['user_id']===1,'real token authenticates WordPress administrator');
 $rpc=WPGPTVibe_MCP::dispatch(['jsonrpc'=>'2.0','id'=>1,'method'=>'tools/call','params'=>['name'=>'get_page_blocks','arguments'=>['id'=>$created['id']]]],WPGPTVibe_OAuth::identity($token['body']['access_token']));verify(empty($rpc['result']['isError']),'authenticated MCP tool reads real page');
 $rest=rest_do_request(new WP_REST_Request('GET','/wpgptvibe/v1/oauth/resource'));verify($rest->get_status()===200&&$rest->get_data()['resource']===WPGPTVibe_OAuth::resource(),'WordPress REST discovery route works');
+
+file_put_contents('/tmp/wpgptvibe-test-page',(string)$created['id']);
+$shared=WPGPTVibe_MCP_Tools::execute('create_shared_pattern',['title'=>'Shared CTA','blocks'=>[['name'=>'wpgptvibe/text','attributes'=>['heading'=>'Shared original','body'=>'Shared content']]],'operation_id'=>'integration-shared-create'],$identity);
+$linked=WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$created['id'],'expected_hash'=>$changed['hash'],'operations'=>[['type'=>'insert','path'=>[1],'block'=>['name'=>'core/block','attributes'=>['ref'=>$shared['id']]]]],'operation_id'=>'integration-shared-insert'],$identity);
+$impact=WPGPTVibe_Shared_Patterns::impact($shared['id']);verify(in_array($created['id'],array_column($impact['items'],'id'),true),'shared section reports affected page');
+try{WPGPTVibe_Block_Manager::change($shared['id'],$shared['hash'],[['type'=>'update','path'=>[0],'attributes'=>['heading'=>'Unsafe unreviewed change']]],true);throw new RuntimeException('Shared change should require an impact hash.');}catch(RuntimeException $e){verify(str_contains($e->getMessage(),'affected_hash'),'shared change requires reviewed impact hash');}
+$sharedChanged=WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$shared['id'],'expected_hash'=>$shared['hash'],'operations'=>[['type'=>'update','path'=>[0],'attributes'=>['heading'=>'Shared reviewed change']]],'confirm_live'=>true,'affected_hash'=>$impact['hash'],'operation_id'=>'integration-shared-update'],$identity);
+verify(str_contains(do_blocks(get_post($created['id'])->post_content),'Shared reviewed change'),'reviewed shared section renders in its referencing page');

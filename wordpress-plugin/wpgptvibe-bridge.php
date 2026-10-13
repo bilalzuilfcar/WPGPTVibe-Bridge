@@ -38,6 +38,7 @@ require_once WPGPTVIBE_DIR . 'includes/class-rest.php';
 require_once WPGPTVIBE_DIR . 'includes/vendor-autoload.php';
 require_once WPGPTVIBE_DIR . 'includes/class-block-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-patterns.php';
+require_once WPGPTVIBE_DIR . 'includes/class-shared-patterns.php';
 require_once WPGPTVIBE_DIR . 'includes/class-operation-store.php';
 require_once WPGPTVIBE_DIR . 'includes/class-oauth-storage.php';
 require_once WPGPTVIBE_DIR . 'includes/class-oauth.php';

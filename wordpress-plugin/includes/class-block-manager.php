@@ -18,11 +18,12 @@ final class WPGPTVibe_Block_Manager {
 
     public static function get(int $id): array {
         $post = self::post($id);
-        return ['id'=>$id, 'title'=>$post->post_title, 'status'=>$post->post_status,
+        return ['id'=>$id, 'post_type'=>$post->post_type, 'title'=>$post->post_title, 'status'=>$post->post_status,
             'hash'=>hash('sha256', $post->post_content), 'blocks'=>parse_blocks($post->post_content),
             'editor_url'=>get_edit_post_link($id, 'raw'), 'preview_url'=>get_preview_post_link($id),
             'revisions_enabled'=>wp_revisions_enabled($post),
-            'content_only'=>(bool)get_post_meta($id, '_wpgptvibe_content_only', true)];
+            'content_only'=>(bool)get_post_meta($id, '_wpgptvibe_content_only', true),
+            'shared_usage'=>$post->post_type==='wp_block'?WPGPTVibe_Shared_Patterns::impact($id):null];
     }
 
     public static function preview(int $id, string $expected_hash, array $operations): array {
@@ -58,7 +59,7 @@ final class WPGPTVibe_Block_Manager {
                 } elseif ($type === 'update') {
                     $name=$siblings[$index]['blockName'] ?? '';
                     // Editable dynamic blocks save attributes; native/static blocks are never rewritten blindly.
-                    if(in_array($name,['core/paragraph','core/heading'],true)){
+        if(in_array($name,['core/paragraph','core/heading'],true)){
                         $attrs=$operation['attributes']??[];
                         if(!is_array($attrs)||array_keys($attrs)!==['content']||!is_string($attrs['content'])){throw new RuntimeException('Native text updates require a content string only.');}
                         if(strlen($attrs['content'])>20000){throw new RuntimeException('Text is too long.');}
@@ -115,6 +116,11 @@ final class WPGPTVibe_Block_Manager {
         if($depth>20){throw new RuntimeException('Block nesting exceeds 20 levels.');}
         if(!is_array($descriptor['children']??[])){throw new RuntimeException('Block children must be an array.');}
         $name=(string)($descriptor['name']??'');
+        if($name==='core/block'){
+            $a=$descriptor['attributes']??[];$ref=$a['ref']??0;$pattern=is_int($ref)?get_post($ref):null;
+            if(!is_array($a)||array_keys($a)!==['ref']||!$pattern||$pattern->post_type!=='wp_block'||!current_user_can('edit_post',$ref)||!empty($descriptor['children'])){throw new RuntimeException('Provide an accessible shared pattern ref only.');}
+            return ['blockName'=>'core/block','attrs'=>['ref'=>$ref],'innerBlocks'=>[],'innerHTML'=>'','innerContent'=>[]];
+        }
         if(in_array($name,['core/paragraph','core/heading'],true)){
             if(!empty($descriptor['children'])){throw new RuntimeException('A text block cannot contain child blocks.');}
             $a=$descriptor['attributes']??[];
@@ -132,10 +138,11 @@ final class WPGPTVibe_Block_Manager {
         return ['blockName'=>$name,'attrs'=>WPGPTVibe_Patterns::attributes($name,$descriptor['attributes']??[]),'innerBlocks'=>$children,'innerHTML'=>'','innerContent'=>array_fill(0,count($children),null)];
     }
 
-    public static function change(int $id,string $expected_hash,array $operations,bool $confirm_live): array {
-        return self::locked($id, static function() use($id,$expected_hash,$operations,$confirm_live) {
+    public static function change(int $id,string $expected_hash,array $operations,bool $confirm_live,?string $affected_hash=null): array {
+        return self::locked($id, static function() use($id,$expected_hash,$operations,$confirm_live,$affected_hash) {
             clean_post_cache($id); $post=self::post($id);
             if (in_array($post->post_status,['publish','future','private'],true) && !$confirm_live) { throw new RuntimeException('This is published or scheduled content. Confirm the live change first.'); }
+            self::confirm_shared($post,$affected_hash);
             if (!wp_revisions_enabled($post)) { throw new RuntimeException('Enable WordPress revisions before making recoverable page changes.'); }
             $preview=self::preview($id,$expected_hash,$operations);
             self::normalize($preview['blocks']); $preview['content']=serialize_blocks($preview['blocks']);
@@ -145,6 +152,10 @@ final class WPGPTVibe_Block_Manager {
             WPGPTVibe_Audit_Log::record('blocks_update','post:'.$id,'success',['before_hash'=>$expected_hash,'after_hash'=>hash('sha256',$preview['content'])]);
             return self::get($id);
         });
+    }
+
+    private static function confirm_shared(WP_Post $post,?string $hash): void {
+        if($post->post_type==='wp_block'){$impact=WPGPTVibe_Shared_Patterns::impact($post->ID);if(!$hash||!hash_equals($impact['hash'],$hash)){throw new RuntimeException('Review the affected pages and provide their current affected_hash before changing a shared pattern.');}}
     }
 
     public static function locked(int $id,callable $operation) {
@@ -167,10 +178,11 @@ final class WPGPTVibe_Block_Manager {
         return $out;
     }
 
-    public static function restore(int $id,int $revision_id,string $expected_hash,bool $confirm_live): array {
-        return self::locked($id,static function()use($id,$revision_id,$expected_hash,$confirm_live){
+    public static function restore(int $id,int $revision_id,string $expected_hash,bool $confirm_live,?string $affected_hash=null): array {
+        return self::locked($id,static function()use($id,$revision_id,$expected_hash,$confirm_live,$affected_hash){
             clean_post_cache($id);$post=self::post($id);
             if(!hash_equals(hash('sha256',$post->post_content),$expected_hash)){throw new RuntimeException('This page has newer edits.');}
+            self::confirm_shared($post,$affected_hash);
             if(!wp_revisions_enabled($post)){throw new RuntimeException('WordPress revisions are disabled.');}
             if($post->post_status!=='draft'&&!$confirm_live){throw new RuntimeException('Confirm restoration of published content.');}
             $revision=get_post($revision_id);
