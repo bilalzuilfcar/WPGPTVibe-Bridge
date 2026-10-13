@@ -31,3 +31,14 @@ $impact=WPGPTVibe_Shared_Patterns::impact($shared['id']);verify(in_array($create
 try{WPGPTVibe_Block_Manager::change($shared['id'],$shared['hash'],[['type'=>'update','path'=>[0],'attributes'=>['heading'=>'Unsafe unreviewed change']]],true);throw new RuntimeException('Shared change should require an impact hash.');}catch(RuntimeException $e){verify(str_contains($e->getMessage(),'affected_hash'),'shared change requires reviewed impact hash');}
 $sharedChanged=WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$shared['id'],'expected_hash'=>$shared['hash'],'operations'=>[['type'=>'update','path'=>[0],'attributes'=>['heading'=>'Shared reviewed change']]],'confirm_live'=>true,'affected_hash'=>$impact['hash'],'operation_id'=>'integration-shared-update'],$identity);
 verify(str_contains(do_blocks(get_post($created['id'])->post_content),'Shared reviewed change'),'reviewed shared section renders in its referencing page');
+$a=WPGPTVibe_Shared_Patterns::create('Cycle A',[['name'=>'wpgptvibe/text','attributes'=>['heading'=>'A']]]);
+$b=WPGPTVibe_Shared_Patterns::create('Cycle B',[['name'=>'wpgptvibe/text','attributes'=>['heading'=>'B']]]);
+$ab=WPGPTVibe_Block_Manager::change($a['id'],$a['hash'],[['type'=>'insert','path'=>[1],'block'=>['name'=>'core/block','attributes'=>['ref'=>$b['id']]]]],true,$a['shared_usage']['hash']);
+$oldA=null;foreach(wp_get_post_revisions($a['id']) as $r){if(WPGPTVibe_Shared_Patterns::references($r->post_content,$b['id'],[$a['id']])){$oldA=$r;break;}}
+verify((bool)$oldA,'shared reference revision exists for recovery test');
+$aClear=WPGPTVibe_Block_Manager::change($a['id'],$ab['hash'],[['type'=>'remove','path'=>[1],'confirm'=>'REMOVE']],true,$ab['shared_usage']['hash']);
+$bCurrent=WPGPTVibe_Block_Manager::get($b['id']);
+$ba=WPGPTVibe_Block_Manager::change($b['id'],$bCurrent['hash'],[['type'=>'insert','path'=>[1],'block'=>['name'=>'core/block','attributes'=>['ref'=>$a['id']]]]],true,$bCurrent['shared_usage']['hash']);
+$aCurrent=WPGPTVibe_Block_Manager::get($a['id']);
+try{WPGPTVibe_Block_Manager::restore($a['id'],$oldA->ID,$aCurrent['hash'],true,$aCurrent['shared_usage']['hash']);throw new RuntimeException('Recursive restore should fail.');}catch(RuntimeException $e){verify(str_contains($e->getMessage(),'recursive'),'revision restore rejects a new transitive reference cycle');}
+file_put_contents('/tmp/wpgptvibe-test-oauth.json',wp_json_encode(['parameters'=>$p,'verifier'=>$verifier]));

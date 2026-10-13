@@ -11,6 +11,28 @@ try {
  const login=await page.request.post(base+'/wp-login.php',{form:{log:'admin',pwd:'test-only-password','wp-submit':'Log In',redirect_to:base+'/wp-admin/',testcookie:'1'}});
  assert.match(login.url(),/wp-admin/, 'WordPress login must establish an authenticated test session');
  await page.goto(base+'/wp-admin/');
+ // Walk the real administrator-consent flow, but intercept the ChatGPT callback locally.
+ const oauthFixture=JSON.parse(fs.readFileSync('/tmp/wpgptvibe-test-oauth.json','utf8'));
+ await page.route('https://chatgpt.com/connector_platform_oauth_redirect**',route=>route.fulfill({status:200,body:'Test OAuth callback received.'}));
+ const authorize=new URL(base+'/wp-admin/admin-post.php');authorize.searchParams.set('action','wpgptvibe_authorize');
+ for(const [key,value] of Object.entries(oauthFixture.parameters))authorize.searchParams.set(key,value);
+ await page.goto(authorize.toString());
+ await page.getByRole('button',{name:'Allow connection',exact:true}).click();
+ await page.waitForURL(/connector_platform_oauth_redirect/);
+ const callback=new URL(page.url());assert.equal(callback.searchParams.get('state'),oauthFixture.parameters.state);assert.equal(callback.searchParams.get('iss'),base);
+ const tokenResponse=await page.request.post(base+'/wp-json/wpgptvibe/v1/oauth/token',{form:{grant_type:'authorization_code',client_id:oauthFixture.parameters.client_id,redirect_uri:oauthFixture.parameters.redirect_uri,code:callback.searchParams.get('code'),code_verifier:oauthFixture.verifier,resource:oauthFixture.parameters.resource}});
+ assert.equal(tokenResponse.status(),200,await tokenResponse.text());
+ const credentials=await tokenResponse.json();
+ const rpcHeaders={Authorization:'Bearer '+credentials.access_token,Accept:'application/json, text/event-stream','MCP-Protocol-Version':'2025-06-18'};
+ const initialized=await page.request.post(base+'/wp-json/wpgptvibe/v1/mcp',{headers:rpcHeaders,data:{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'WordPress acceptance',version:'1.0'}}}});
+ assert.equal(initialized.status(),200);assert.equal((await initialized.json()).result.protocolVersion,'2025-06-18');
+ const notification=await page.request.post(base+'/wp-json/wpgptvibe/v1/mcp',{headers:rpcHeaders,data:{jsonrpc:'2.0',method:'notifications/initialized'}});assert.equal(notification.status(),202);assert.equal(await notification.text(),'');
+ const site=await page.request.post(base+'/wp-json/wpgptvibe/v1/mcp',{headers:rpcHeaders,data:{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'site_info',arguments:{}}}});
+ assert.equal(site.status(),200);assert.equal((await site.json()).result.structuredContent.result.url,base+'/');
+ const protectedResource=await page.request.post(base+'/wp-json/wpgptvibe/v1/mcp',{data:{jsonrpc:'2.0',id:3,method:'tools/list'}});assert.equal(protectedResource.status(),401);assert.match(protectedResource.headers()['www-authenticate'],/resource_metadata/);
+ const discovery=await page.request.get(base+'/.well-known/oauth-authorization-server');assert.equal(discovery.status(),200);assert.equal((await discovery.json()).issuer,base);
+ console.log('PASS: real OAuth consent, token exchange, HTTP MCP initialization and authenticated tool call');
+ console.log('PASS: unauthenticated MCP is rejected and OAuth discovery is reachable');
  const id=fs.readFileSync('/tmp/wpgptvibe-test-page','utf8').trim();
  await page.goto(base+'/wp-admin/post.php?post='+id+'&action=edit');
  await page.waitForFunction(()=>window.wp?.data?.select('core/block-editor')?.getBlocks()?.length>0);
