@@ -22,6 +22,12 @@
                 if (kind === 'columns' && !locked) controls.push(el(RangeControl, { label: 'Columns on desktop', value: a.columns, min: 1, max: 4, onChange: v => props.setAttributes({ columns: v }) }));
                 if (!locked) controls.push(el(SelectControl, { label: 'Text alignment', value: a.align, options: [{label:'Default',value:''},{label:'Left',value:'left'},{label:'Centre',value:'center'},{label:'Right',value:'right'}], onChange: v => props.setAttributes({ align: v }) }));
                 if (!locked) controls.push(el(TextControl, { label: 'Background colour (hex)', value: a.background, onChange: v => props.setAttributes({ background: v }) }));
+                if (!locked) controls.push(el(TextControl, { label: 'Text colour (hex)', value: a.color, onChange: v => props.setAttributes({ color: v }) }));
+                if (!locked && ['text','card'].includes(kind)) {
+                    controls.push(el(RangeControl, { label: 'Body font size (0 uses theme)', value: a.fontSize, min: 0, max: 96, onChange: v => props.setAttributes({ fontSize: v }) }));
+                    controls.push(el(RangeControl, { label: 'Heading font size (0 uses theme)', value: a.headingSize, min: 0, max: 120, onChange: v => props.setAttributes({ headingSize: v }) }));
+                    controls.push(el(RangeControl, { label: 'Heading level', value: a.level, min: 1, max: 6, onChange: v => props.setAttributes({ level: v }) }));
+                }
                 const innerProps = container ? useInnerBlocksProps({ ...blockProps, style: { ...style, '--wpgptvibe-columns': a.columns } }, { templateLock: locked ? 'contentOnly' : false }) : null;
                 const inspector = el(InspectorControls, {}, el(PanelBody, { title: 'Section settings' }, ...controls));
                 let content = [];
@@ -33,8 +39,8 @@
                     content.push(el(RichText, { tagName: 'span', className: 'wp-element-button', value: a.label, placeholder: 'Button text', onChange: v => props.setAttributes({ label: v }) }));
                     content.push(el(TextControl, { label: 'Button link', value: a.url, onChange: v => props.setAttributes({ url: v }) }));
                 } else if (kind !== 'columns' && kind !== 'section') {
-                    content.push(el(RichText, { tagName: 'h' + a.level, value: a.heading, placeholder: 'Heading', onChange: v => props.setAttributes({ heading: v }) }));
-                    content.push(el(RichText, { tagName: 'div', multiline: 'p', value: a.body, placeholder: 'Write your content here', onChange: v => props.setAttributes({ body: v }) }));
+                    content.push(el(RichText, { tagName: 'h' + a.level, style: a.headingSize ? {fontSize: a.headingSize + 'px'} : undefined, value: a.heading, placeholder: 'Heading', onChange: v => props.setAttributes({ heading: v }) }));
+                    content.push(el(RichText, { tagName: 'div', style: a.fontSize ? {fontSize: a.fontSize + 'px'} : undefined, multiline: 'p', value: a.body, placeholder: 'Write your content here', onChange: v => props.setAttributes({ body: v }) }));
                 }
                 if (container) content.push(innerProps.children);
                 return el(wp.element.Fragment, {}, inspector, el('div', innerProps || blockProps, ...content));
@@ -42,7 +48,7 @@
             save: container ? () => el(InnerBlocks.Content) : () => null
         });
     });
-    wp.plugins.registerPlugin('wpgptvibe-editing', {
+    if (WPGPTVibeEditor.showPagePanel) wp.plugins.registerPlugin('wpgptvibe-editing', {
         render: function () {
             const { meta, id } = wp.data.useSelect(select => ({meta: select('core/editor').getEditedPostAttribute('meta') || {}, id: select('core/editor').getCurrentPostId()}), []);
             const editPost = wp.data.useDispatch('core/editor').editPost;

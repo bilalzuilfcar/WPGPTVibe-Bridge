@@ -9,6 +9,7 @@ final class WPGPTVibe_Patterns {
         'label'=>['type'=>'string','default'=>'','role'=>'content'], 'url'=>['type'=>'string','default'=>'','role'=>'content'],
         'imageId'=>['type'=>'integer','default'=>0,'role'=>'content'], 'imageUrl'=>['type'=>'string','default'=>'','role'=>'content'], 'alt'=>['type'=>'string','default'=>'','role'=>'content'],
         'align'=>['type'=>'string','default'=>''], 'padding'=>['type'=>'integer','default'=>32],
+        'fontSize'=>['type'=>'integer','default'=>0], 'headingSize'=>['type'=>'integer','default'=>0],
         'columns'=>['type'=>'integer','default'=>3], 'level'=>['type'=>'integer','default'=>2],
         'background'=>['type'=>'string','default'=>''], 'color'=>['type'=>'string','default'=>'']
     ]; }
@@ -19,7 +20,7 @@ final class WPGPTVibe_Patterns {
             if(!isset($schema[$key])){throw new RuntimeException('Unsupported attribute: '.$key);}
             if($schema[$key]['type']==='integer'){
                 if(!is_int($value)){throw new RuntimeException('Attribute '.$key.' must be an integer.');}
-                $bounds=['padding'=>[0,160],'columns'=>[1,4],'level'=>[1,6],'imageId'=>[0,PHP_INT_MAX]];
+                $bounds=['padding'=>[0,160],'columns'=>[1,4],'level'=>[1,6],'fontSize'=>[0,96],'headingSize'=>[0,120],'imageId'=>[0,PHP_INT_MAX]];
                 [$min,$max]=$bounds[$key];if($value<$min||$value>$max){throw new RuntimeException('Attribute '.$key.' is out of range.');}$out[$key]=$value;
             }else{
                 if(!is_string($value)||strlen($value)>20000){throw new RuntimeException('Invalid text attribute.');}
@@ -45,7 +46,7 @@ final class WPGPTVibe_Patterns {
     }
     public static function editor(): void {
         wp_enqueue_script('wpgptvibe-editor',WPGPTVIBE_URL.'assets/editor.js',['wp-blocks','wp-block-editor','wp-element','wp-components','wp-data','wp-plugins','wp-edit-post'],WPGPTVIBE_VERSION,true);
-        wp_localize_script('wpgptvibe-editor','WPGPTVibeEditor',['canUnlock'=>current_user_can('manage_options'),'schema'=>self::schema()]);
+        wp_localize_script('wpgptvibe-editor','WPGPTVibeEditor',['canUnlock'=>current_user_can('manage_options'),'schema'=>self::schema(),'showPagePanel'=>get_current_screen()->base==='post']);
         wp_enqueue_style('wpgptvibe-blocks');
     }
     public static function render(array $attrs,string $content,$block): string {
@@ -56,7 +57,9 @@ final class WPGPTVibe_Patterns {
         if(!empty($a['background'])){$style.='background:'.$a['background'].';';}if(!empty($a['color'])){$style.='color:'.$a['color'].';';}
         $align=$a['align']??'';
         if(in_array($align,['left','center','right'],true)){$style.='text-align:'.$align.';';}
-        $copy=($heading!==''?'<h'.$level.'>'.wp_kses_post($heading).'</h'.$level.'>':'').($body!==''?'<div class="wpgptvibe-copy">'.wp_kses_post($body).'</div>':'');
+        $heading_style=!empty($a['headingSize'])?' style="font-size:'.$a['headingSize'].'px"':'';
+        $body_style=!empty($a['fontSize'])?' style="font-size:'.$a['fontSize'].'px"':'';
+        $copy=($heading!==''?'<h'.$level.$heading_style.'>'.wp_kses_post($heading).'</h'.$level.'>':'').($body!==''?'<div class="wpgptvibe-copy"'.$body_style.'>'.wp_kses_post($body).'</div>':'');
         if($name==='wpgptvibe/image'){
             $id=$a['imageId']??0;
             return $id?wp_get_attachment_image($id,'large',false,['alt'=>$a['alt']??'']):(!empty($a['imageUrl'])?'<img class="wpgptvibe-image" src="'.esc_url($a['imageUrl']).'" alt="'.esc_attr($a['alt']??'').'" loading="lazy">':'');

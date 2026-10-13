@@ -1,6 +1,14 @@
 # WPGPTVibe
 
-WPGPTVibe is a self-hosted WordPress control plane and MCP application. It is designed to replace quota-bound third-party WordPress connectors for internal site operations while keeping destructive actions permission-gated and auditable.
+WPGPTVibe provides a direct WordPress MCP plugin and an optional self-hosted multi-site application. It is designed to replace quota-bound third-party WordPress connectors for internal site operations while keeping destructive actions permission-gated and auditable.
+
+## Direct WordPress connection (plugin 0.4.0)
+
+Install `wordpress-plugin/` on a WordPress site, then connect its OAuth-protected MCP URL in ChatGPT. No Node deployment is required for this route. Pages use native editable Gutenberg sections, starter patterns, shared section impact reports and revision recovery. See [plugin installation and editing instructions](wordpress-plugin/README.md).
+
+## Optional multi-site application (0.3.0)
+
+The existing Node application remains available for the central registry, encrypted Bridge credentials and optional browser tools.
 
 ## Architecture
 

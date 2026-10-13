@@ -47,5 +47,7 @@ try {
 } catch(error) {
  await page.screenshot({path:'/tmp/wpgptvibe-browser-failure.png',fullPage:true});
  console.error('Page errors:',errors);
+ console.error('Current test URL:',page.url());
+ console.error('Visible test page:',(await page.locator('body').innerText()).slice(0,2000));
  throw error;
 } finally {await browser.close();}
