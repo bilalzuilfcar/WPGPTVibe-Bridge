@@ -58,6 +58,7 @@ final class WPGPTVibe_Admin {
                 <tr><th>WordPress REST endpoint</th><td><a href="<?php echo esc_url(rest_url('wpgptvibe/v1/oauth/resource')); ?>" target="_blank" rel="noopener">Open discovery test</a> (must return JSON)</td></tr>
                 <tr><th>OAuth discovery</th><td><a href="<?php echo esc_url(WPGPTVibe_OAuth::issuer().'/.well-known/oauth-authorization-server'); ?>" target="_blank" rel="noopener">Open authorization metadata</a> (must return JSON)</td></tr>
                 <tr><th>Editor</th><td>WordPress Block Editor. Elementor, Divi and WPBakery pages are preserved and require separate integrations.</td></tr>
+                <tr><th>Spectra visual pages</th><td><?php $spectra=WPGPTVibe_Spectra_Adapter::capabilities(); echo $spectra['writable'] ? 'Ready: Spectra Blocks '.esc_html($spectra['version']).'. Native sections, text, buttons and WordPress images remain visually editable.' : 'Requires tested Spectra Blocks '.esc_html(implode(', ',$spectra['tested_versions'])).'. Spectra Legacy is a separate plugin; its pages are preserved.'; ?></td></tr>
                 <tr><th>Connection registrations</th><td><?php echo esc_html((string)count(get_option('wpgptvibe_oauth_clients',[]))); ?></td></tr>
                 <tr><th>Header and footer editing</th><td><?php echo wp_is_block_theme() ? 'Site Editor available through WordPress (MCP template tools are not included in this release).' : 'Classic theme: use the theme’s WordPress controls.'; ?></td></tr>
             </tbody></table>

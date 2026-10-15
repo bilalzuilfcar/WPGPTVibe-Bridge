@@ -14,8 +14,9 @@ spectra_verify(str_contains($html,'Partnerships and Certifications')&&str_contai
 $before=get_post($created['id'])->post_content;
 $preview=WPGPTVibe_MCP_Tools::execute('preview_page_changes',['id'=>$created['id'],'expected_hash'=>$created['hash'],'operations'=>[['type'=>'update','path'=>[0,0],'attributes'=>['text'=>'MCP native Spectra headline']]]],$identity);
 spectra_verify(get_post($created['id'])->post_content===$before,'Spectra change preview does not save the page');
-$updated=WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$created['id'],'expected_hash'=>$created['hash'],'operations'=>[['type'=>'update','path'=>[0,0],'attributes'=>['text'=>'MCP native Spectra headline']]],'operation_id'=>'spectra-update-trial'],$identity);
+$updated=WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$created['id'],'expected_hash'=>$created['hash'],'operations'=>[['type'=>'update','path'=>[0,0],'attributes'=>['text'=>'MCP native Spectra headline']],['type'=>'update','path'=>[0],'attributes'=>['backgroundColor'=>'#123456','style'=>['color'=>['text'=>'#ffffff']]]]],'operation_id'=>'spectra-update-trial'],$identity);
 spectra_verify(str_contains(do_blocks(get_post($created['id'])->post_content),'MCP native Spectra headline'),'MCP edits render through Spectra itself');
+spectra_verify(str_contains(do_blocks(get_post($created['id'])->post_content),'#123456'),'native container background setting renders in Spectra');
 try{WPGPTVibe_MCP_Tools::execute('apply_page_changes',['id'=>$created['id'],'expected_hash'=>$created['hash'],'operations'=>[['type'=>'duplicate','path'=>[0]]],'operation_id'=>'spectra-stale-write'],$identity);throw new RuntimeException('Stale write was accepted');}catch(RuntimeException $e){spectra_verify(str_contains($e->getMessage(),'newer edits'),'Spectra rejects stale changes');}
 // Use real WordPress media. Files are generated locally, not fetched externally.
 $uploads=wp_upload_dir();$images=[];

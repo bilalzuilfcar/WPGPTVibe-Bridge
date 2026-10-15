@@ -1,10 +1,10 @@
-# WPGPTVibe Bridge 0.4.0
+# WPGPTVibe Bridge 0.5.0
 
 A WordPress plugin for connecting a website directly to ChatGPT through MCP. A separate Node application is optional.
 
 ## Install and connect
 
-1. Upload `wpgptvibe-bridge-0.4.0.zip` in WordPress → Plugins → Add Plugin → Upload Plugin, then activate it.
+1. Upload `wpgptvibe-bridge-0.5.0.zip` in WordPress → Plugins → Add Plugin → Upload Plugin, then activate it.
 2. Open Tools → WPGPTVibe. Check HTTPS and the two discovery links.
 3. In ChatGPT Plugins, choose Add custom MCP server. Copy the MCP URL from WordPress, select OAuth and dynamic client registration (DCR).
 4. Use `site:read pages:read pages:write layout:write media:write seo:write` for ordinary page work. Add `pages:publish` only when publication is required.
@@ -23,6 +23,20 @@ The inserter contains five editable patterns: hero, services, four cards, FAQs a
 “Protect section layouts” keeps supported content editable while protecting the layout. An administrator can turn protection off to restructure the page. Save current edits before asking ChatGPT to modify the same page.
 
 The plugin must remain active to render its dynamic sections. Deactivation preserves their stored content, but does not convert them into static HTML.
+
+## Native Spectra pages (0.5.0)
+
+Install and activate **Spectra Blocks 1.0.11** (`spectra-blocks`) separately. It is different from **Spectra Legacy** (`ultimate-addons-for-gutenberg`, `uagb/` blocks). Keep Legacy active for existing Legacy pages. This release does not migrate them. Other Spectra Blocks versions are detected but writes are refused until tested.
+
+Ask ChatGPT to call `get_builder_capabilities`, then `list_spectra_patterns` or `create_spectra_page`. The Partnerships and Certifications starter is a demonstration draft: replace examples with verified credentials and approved logos before publishing.
+
+Pages use Spectra's actual Container, Text, Buttons and Button blocks, plus WordPress Image blocks. Open the returned editor link to edit text, replace images through the Media Library, move/duplicate sections and change builder settings. Supported MCP updates include text, links, spacing, colours, font settings, container dimensions and grid/wrapping layouts. Advanced per-device controls remain in the visual editor. If an existing page has responsive overrides or authoritative dimension settings, conflicting design edits are refused with a visual-editor instruction rather than silently ignored; text and link edits remain available. Container background colours use Spectra's native `backgroundColor` field. Images can be inserted from accessible media IDs; replace them visually or use remove/insert operations. The adapter does not rewrite arbitrary image markup.
+
+Ordinary supported MCP edits do not require an open editor tab or screenshot for each action. Save local editor changes before requesting MCP edits, then reload the editor afterwards. Visual review still requires browser access.
+
+Astra is compatible with these page elements; its global settings and header/footer builder are not exposed by this adapter. No theme is installed or switched on your website automatically. Spectra must remain active to render Spectra's dynamic blocks; WPGPTVibe is required for its own blocks and the connection, not for rendering native Spectra elements.
+
+Test matrix: WordPress 7.1.3, PHP 8.3, Spectra Blocks 1.0.11 and Astra 4.14.1 (disposable MySQL site in CI). Do not interpret this as testing every WordPress/PHP/theme combination. Spectra requires WordPress 6.6 or newer.
 
 ## Shared sections and recovery
 

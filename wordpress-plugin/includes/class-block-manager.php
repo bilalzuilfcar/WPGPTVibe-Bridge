@@ -33,6 +33,7 @@ final class WPGPTVibe_Block_Manager {
         }
         if (!$operations || count($operations) > 50) { throw new RuntimeException('Provide between 1 and 50 block changes.'); }
         $blocks = parse_blocks($post->post_content);
+        if(class_exists('WPGPTVibe_Spectra_Adapter')){WPGPTVibe_Spectra_Adapter::require_for_tree($blocks);}
         $summary = [];
         foreach ($operations as $operation) {
             if (!is_array($operation)) { throw new RuntimeException('Invalid block operation.'); }

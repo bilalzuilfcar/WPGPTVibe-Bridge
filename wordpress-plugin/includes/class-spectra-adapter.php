@@ -12,7 +12,11 @@ final class WPGPTVibe_Spectra_Adapter {
         $registered=class_exists('WP_Block_Type_Registry')?array_values(array_filter(self::NAMES,static fn($n)=>WP_Block_Type_Registry::get_instance()->is_registered($n))):[];
         return ['builder'=>'spectra-blocks','version'=>$version,'tested_versions'=>[self::VERSION],
             'writable'=>$version===self::VERSION&&count($registered)===count(self::NAMES),'registered_blocks'=>$registered,
-            'supported_blocks'=>self::NAMES,'images'=>'core/image',
+            'supported_blocks'=>self::NAMES,'images'=>'core/image (create from attachment id; replace visually or remove/insert)',
+            'editable_controls'=>['container'=>['htmlTag','align','layout','width','maxWidth','minHeight','backgroundColor','style','anchor'],'content'=>['text','tagName','style','anchor'],'buttons'=>['layout','style'],'button'=>['text','linkURL','linkTarget','linkRel','style','anchor']],
+            'style_restrictions'=>['Container background uses top-level backgroundColor, not style.color.background.','Buttons wrapper has no text colour or typography; style individual Button elements.','Only container/buttons support blockGap.'],
+            'style_groups'=>['spacing'=>['padding','margin','blockGap'],'color'=>['text','background'],'typography'=>['fontSize','lineHeight','fontWeight','fontStyle','textAlign','textTransform'],'border'=>['radius','width','color','style']],
+            'responsive_layout'=>'Grid minimumColumnWidth and wrapping flex; advanced per-device settings remain in the visual editor. Existing responsive overrides cause conflicting design patches to be refused.',
             'legacy_version'=>defined('UAGB_VERSION')?(string)UAGB_VERSION:null,
             'legacy_writable'=>false,'theme_settings_writable'=>false,
             'note'=>'Use native Spectra Blocks descriptors. Spectra Legacy (uagb/) attribute editing and Astra global/header/footer settings are not supported by this adapter.'];
@@ -36,8 +40,17 @@ final class WPGPTVibe_Spectra_Adapter {
     }
     public static function update(array $block,array $patch): array {
         self::require_available();$validated=self::attributes($block['blockName'],$patch);
+        $design=array_intersect(array_keys($patch),['style','layout','width','maxWidth','minHeight','backgroundColor','align']);
+        if($design&&!empty($block['attrs']['responsiveControls'])){throw new RuntimeException('This block has stored responsive overrides. Change its design in the visual editor; text and links remain editable through MCP.');}
+        foreach(['width','maxWidth','minHeight','backgroundColor'] as $key){
+            if(array_key_exists($key,$patch)&&isset($block['attrs']['style'][$key])){throw new RuntimeException('This dimension or background has an authoritative responsive style. Change it in the visual editor.');}
+        }
         // Validate only the requested patch; preserve builder settings outside it.
-        $block['attrs']=array_replace_recursive($block['attrs'],$validated);return $block;
+        foreach(['style','layout'] as $nested){if(isset($validated[$nested])&&is_array($block['attrs'][$nested]??null)){$validated[$nested]=array_replace_recursive($block['attrs'][$nested],$validated[$nested]);}}
+        $block['attrs']=array_replace($block['attrs'],$validated);return $block;
+    }
+    public static function require_for_tree(array $blocks): void {
+        foreach($blocks as $block){if(str_starts_with($block['blockName']??'','spectra/')){self::require_available();return;}self::require_for_tree($block['innerBlocks']);}
     }
     public static function validate_tree(array $blocks,?string $parent=null): void {
         foreach($blocks as $block){
@@ -54,9 +67,9 @@ final class WPGPTVibe_Spectra_Adapter {
         $block['innerBlocks']=array_map([self::class,'fresh_ids'],$block['innerBlocks']);return $block;
     }
     private static function attributes(string $name,array $attrs): array {
-        $common=['style','anchor'];
+        $common=$name==='spectra/buttons'?['style']:['style','anchor'];
         $extra=match($name){
-            'spectra/container'=>['htmlTag','align','layout','width','maxWidth','minHeight'],
+            'spectra/container'=>['htmlTag','align','layout','width','maxWidth','minHeight','backgroundColor'],
             'spectra/content'=>['tagName','text'],
             'spectra/buttons'=>['layout'],
             'spectra/button'=>['text','linkURL','linkTarget','linkRel'],
@@ -64,12 +77,13 @@ final class WPGPTVibe_Spectra_Adapter {
         };
         if(array_diff(array_keys($attrs),array_merge($common,$extra))){throw new RuntimeException('Unsupported Spectra attribute. Use the visual editor for advanced controls.');}
         foreach($attrs as $key=>&$value){
-            if($key==='style'){$value=self::style($value);}
+            if($key==='style'){$value=self::style($value,$name);}
             elseif($key==='layout'){$value=self::layout($value,$name);}
             elseif($key==='text'){
                 if(!is_string($value)||strlen($value)>20000){throw new RuntimeException('Spectra text must be a string up to 20000 bytes.');}
                 $value=wp_kses($value,['a'=>['href'=>true,'title'=>true],'strong'=>[],'em'=>[],'b'=>[],'i'=>[],'br'=>[],'code'=>[],'s'=>[],'sub'=>[],'sup'=>[]]);
             }
+            elseif($key==='backgroundColor'){self::colour($value);}
             elseif($key==='anchor'){if(!is_string($value)||!preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,99}$/D',$value)){throw new RuntimeException('Invalid anchor.');}}
             elseif(in_array($key,['width','maxWidth','minHeight'],true)){self::dimension($value);}
             elseif($key==='htmlTag'){self::one_of($value,['div','section','article','aside']);}
@@ -94,9 +108,12 @@ final class WPGPTVibe_Spectra_Adapter {
         $number=(float)$value;$limit=str_ends_with($value,'px')?1600:100;
         if($number>$limit){throw new RuntimeException('Spectra dimension exceeds its safe range.');}
     }
-    private static function colour($value): void {if(!is_string($value)||!preg_match('/^#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?(?:[a-fA-F0-9]{2})?$/D',$value)){throw new RuntimeException('Use a hexadecimal colour.');}}
-    private static function style($style): array {
+    private static function colour($value): void {if(!is_string($value)||!preg_match('/^#(?:[a-fA-F0-9]{3}|[a-fA-F0-9]{6}|[a-fA-F0-9]{8})$/D',$value)){throw new RuntimeException('Use a hexadecimal colour.');}}
+    private static function style($style,string $name): array {
         if(!is_array($style)||array_diff(array_keys($style),['spacing','color','typography','border'])){throw new RuntimeException('Unsupported Spectra style.');}
+        if($name==='spectra/container'&&isset($style['color']['background'])){throw new RuntimeException('Use backgroundColor for Spectra container backgrounds.');}
+        if($name==='spectra/buttons'&&(isset($style['typography'])||isset($style['color']['text']))){throw new RuntimeException('Unsupported style for the Buttons wrapper. Style the individual buttons.');}
+        if(!self::container($name)&&isset($style['spacing']['blockGap'])){throw new RuntimeException('Unsupported gap on a leaf block. Style its container.');}
         foreach($style as $group=>$settings){
             $allowed=match($group){'spacing'=>['padding','margin','blockGap'],'color'=>['text','background'],'typography'=>['fontSize','lineHeight','fontWeight','fontStyle','textAlign','textTransform'],'border'=>['radius','width','color','style']};
             if(!is_array($settings)||array_diff(array_keys($settings),$allowed)){throw new RuntimeException('Unsupported Spectra style property.');}

@@ -55,7 +55,7 @@ jobs:
           unzip -q /tmp/spectra.zip -d /tmp/wpgptvibe-core/wordpress/wp-content/plugins
           curl -fsSL https://downloads.wordpress.org/theme/astra.4.14.1.zip -o /tmp/astra.zip
           unzip -q /tmp/astra.zip -d /tmp/wpgptvibe-core/wordpress/wp-content/themes
-          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once ABSPATH.'wp-admin/includes/plugin.php'; \$result = activate_plugin('spectra-blocks/spectra-blocks.php'); if (is_wp_error(\$result)) { throw new RuntimeException(\$result->get_error_message()); } switch_theme('astra');"
+          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once ABSPATH.'wp-admin/includes/plugin.php'; \$result = activate_plugin('spectra-blocks/spectra-blocks.php'); if (is_wp_error(\$result)) { throw new RuntimeException(\$result->get_error_message()); } switch_theme('astra'); update_option('__spectra_blocks_do_redirect', false);"
       - name: Spectra real WordPress integration
         env:
           WPGPTVIBE_TEST_SITE: '1'
