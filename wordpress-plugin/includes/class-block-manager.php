@@ -44,11 +44,12 @@ final class WPGPTVibe_Block_Manager {
             $siblings =& self::children($blocks, $path);
             if ($type === 'insert') {
                 if ($index > count($siblings)) { throw new RuntimeException('Invalid insertion position.'); }
-                $new = self::new_block($operation['block'] ?? []);
+                $parent=self::parent_name($blocks,$path);
+                $new = self::new_block($operation['block'] ?? [],0,$parent);
                 array_splice($siblings, $index, 0, [$new]);
             } else {
                 if (!isset($siblings[$index])) { throw new RuntimeException('Block not found at the requested path.'); }
-                if ($type === 'duplicate') { array_splice($siblings, $index+1, 0, [$siblings[$index]]); }
+                if ($type === 'duplicate') { $copy=class_exists('WPGPTVibe_Spectra_Adapter')?WPGPTVibe_Spectra_Adapter::fresh_ids($siblings[$index]):$siblings[$index]; array_splice($siblings, $index+1, 0, [$copy]); }
                 elseif ($type === 'move') {
                     $to = $operation['to'] ?? null;
                     if (!is_int($to) || $to < 0 || $to >= count($siblings)) { throw new RuntimeException('Invalid move position.'); }
@@ -58,7 +59,13 @@ final class WPGPTVibe_Block_Manager {
                     array_splice($siblings, $index, 1);
                 } elseif ($type === 'update') {
                     $name=$siblings[$index]['blockName'] ?? '';
-                    // Editable dynamic blocks save attributes; native/static blocks are never rewritten blindly.
+                    // Verified dynamic builder blocks save their own attributes; never guess static markup.
+                    if(class_exists('WPGPTVibe_Spectra_Adapter')&&WPGPTVibe_Spectra_Adapter::supports($name)){
+                        $attrs=$operation['attributes']??[];if(!is_array($attrs)){throw new RuntimeException('Attributes must be an object.');}
+                        if(get_post_meta($id,'_wpgptvibe_content_only',true)&&array_diff(array_keys($attrs),['text','linkURL'])){throw new RuntimeException('Content-only editing allows text and links.');}
+                        $siblings[$index]=WPGPTVibe_Spectra_Adapter::update($siblings[$index],$attrs);
+                        $summary[]=['type'=>$type,'path'=>$operation['path']];unset($siblings);continue;
+                    }
         if(in_array($name,['core/paragraph','core/heading'],true)){
                         $attrs=$operation['attributes']??[];
                         if(!is_array($attrs)||array_keys($attrs)!==['content']||!is_string($attrs['content'])){throw new RuntimeException('Native text updates require a content string only.');}
@@ -80,6 +87,7 @@ final class WPGPTVibe_Block_Manager {
             $summary[]=['type'=>$type,'path'=>$operation['path']];
             unset($siblings);
         }
+        if(class_exists('WPGPTVibe_Spectra_Adapter')){WPGPTVibe_Spectra_Adapter::validate_tree($blocks);}
         self::normalize($blocks);
         $content = serialize_blocks($blocks);
         if($post->post_type==='wp_block'){WPGPTVibe_Shared_Patterns::assert_acyclic($id,$content);}
@@ -87,10 +95,14 @@ final class WPGPTVibe_Block_Manager {
         return ['id'=>$id,'before_hash'=>$expected_hash,'hash'=>hash('sha256',$content),'blocks'=>$blocks,'content'=>$content,'changes'=>$summary];
     }
 
+    private static function parent_name(array $blocks,array $path): ?string {
+        $name=null;foreach($path as $index){$name=$blocks[$index]['blockName']??null;$blocks=$blocks[$index]['innerBlocks']??[];}return $name;
+    }
+
     private static function &children(array &$blocks, array $path): array {
         $current =& $blocks;
         foreach ($path as $index) {
-            if (!isset($current[$index]['innerBlocks']) || !$current[$index]['innerBlocks']) { throw new RuntimeException('Parent block not found or does not contain editable sections.'); }
+            if (!isset($current[$index]['innerBlocks']) || (!$current[$index]['innerBlocks'] && !(class_exists('WPGPTVibe_Spectra_Adapter')&&WPGPTVibe_Spectra_Adapter::container($current[$index]['blockName']??'')))) { throw new RuntimeException('Parent block not found or does not contain editable sections.'); }
             // Only rewrite child markers when the parent has a simple wrapper.
             $fragments=array_values(array_filter($current[$index]['innerContent'],static fn($x)=>is_string($x)&&trim($x)!==''));
             if (count($fragments)>2) { throw new RuntimeException('This parent has complex markup. Edit its layout in WordPress.'); }
@@ -113,10 +125,23 @@ final class WPGPTVibe_Block_Manager {
         }
     }
 
-    public static function new_block(array $descriptor,int $depth=0): array {
+    public static function new_block(array $descriptor,int $depth=0,?string $parent=null): array {
         if($depth>20){throw new RuntimeException('Block nesting exceeds 20 levels.');}
         if(!is_array($descriptor['children']??[])){throw new RuntimeException('Block children must be an array.');}
         $name=(string)($descriptor['name']??'');
+        if($parent==='spectra/buttons'&&$name!=='spectra/button'){throw new RuntimeException('spectra/buttons can contain only spectra/button child blocks.');}
+        if(class_exists('WPGPTVibe_Spectra_Adapter')&&WPGPTVibe_Spectra_Adapter::supports($name)){return WPGPTVibe_Spectra_Adapter::create($descriptor,$depth,$parent);}
+        if($name==='core/image'){
+            $a=$descriptor['attributes']??[];
+            if(!is_array($a)||array_diff(array_keys($a),['id','alt'])||!empty($descriptor['children'])){throw new RuntimeException('Supported image attributes are a media id and alt text, with no children.');}
+            $id=$a['id']??0;
+            if(!is_int($id)||$id<1||!wp_attachment_is_image($id)||!current_user_can('read_post',$id)){throw new RuntimeException('Provide an accessible image attachment.');}
+            $src=wp_get_attachment_image_src($id,'full');if(!$src){throw new RuntimeException('Cannot read image attachment.');}
+            $alt=$a['alt']??(string)get_post_meta($id,'_wp_attachment_image_alt',true);
+            if(!is_string($alt)||strlen($alt)>2000){throw new RuntimeException('Invalid image alt text.');}
+            $html='<figure class="wp-block-image size-full"><img src="'.esc_url($src[0]).'" alt="'.esc_attr($alt).'" class="wp-image-'.$id.'"/></figure>';
+            return ['blockName'=>'core/image','attrs'=>['id'=>$id,'sizeSlug'=>'full','linkDestination'=>'none'],'innerBlocks'=>[],'innerHTML'=>$html,'innerContent'=>[$html]];
+        }
         if($name==='core/block'){
             $a=$descriptor['attributes']??[];$ref=$a['ref']??0;$pattern=is_int($ref)?get_post($ref):null;
             if(!is_array($a)||array_keys($a)!==['ref']||!$pattern||$pattern->post_type!=='wp_block'||!current_user_can('edit_post',$ref)||!empty($descriptor['children'])){throw new RuntimeException('Provide an accessible shared pattern ref only.');}

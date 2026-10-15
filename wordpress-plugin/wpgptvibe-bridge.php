@@ -36,6 +36,7 @@ require_once WPGPTVIBE_DIR . 'includes/class-wpcli-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-calculator-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-rest.php';
 require_once WPGPTVIBE_DIR . 'includes/vendor-autoload.php';
+require_once WPGPTVIBE_DIR . 'includes/class-spectra-adapter.php';
 require_once WPGPTVIBE_DIR . 'includes/class-block-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-patterns.php';
 require_once WPGPTVIBE_DIR . 'includes/class-shared-patterns.php';
