@@ -27,24 +27,24 @@ Draft first. Preserve old pages. Require current hashes, revisions, existing OAu
 Files: includes/class-spectra-adapter.php, includes/class-block-manager.php, includes/class-mcp-tools.php, wpgptvibe-bridge.php, tests/spectra.php.
 Interfaces: capabilities(): array; supports(string): bool; create(array, int): array; update(array, array): array; patterns(): array; pattern(string): array.
 
-- [ ] Write failing behavioural tests for native container/content/buttons/button creation, update, layout/style validation, missing/unsupported builder, parent rules, empty insertion, existing attributes, leaf children, stale hash and replay.
-- [ ] Run tests and confirm unsupported native Spectra creation fails.
-- [ ] Implement the adapter with exact allowlists and preserve parsed settings on updates. Integrate new_block/preview and builder discovery/pattern MCP tools.
-- [ ] Run the complete PHP harness and syntax checks; commit passing implementation.
+- [x] Write failing behavioural tests for native container/content/buttons/button creation, update, layout/style validation, missing/unsupported builder, parent rules, empty insertion, existing attributes, leaf children, stale hash and replay.
+- [x] Run tests and confirm unsupported native Spectra creation fails.
+- [x] Implement the adapter with exact allowlists and preserve parsed settings on updates. Integrate new_block/preview and builder discovery/pattern MCP tools.
+- [x] Run the complete PHP harness and syntax checks; commit passing implementation.
 
 ### Task 2: Real builder and editor acceptance
 
 Files: tests/spectra-integration.php, tests/spectra-browser.mjs, .github/workflows/ci.yml.
 
-- [ ] Install pinned Spectra Blocks and Astra into the disposable CI WordPress site.
-- [ ] Test create/read/update/preview/publish/revision/retry through actual tool execution and rendering.
-- [ ] Open the real editor, verify native blocks, edit text, replace native image, duplicate/reorder, save/reopen and check mobile rendering.
-- [ ] Fix failures, run CI and commit.
+- [x] Install pinned Spectra Blocks and Astra into the disposable CI WordPress site.
+- [x] Test create/read/update/preview/publish/revision/retry through actual tool execution and rendering.
+- [x] Open the real editor, verify native blocks, edit text, replace native image, duplicate/reorder, save/reopen and check mobile rendering.
+- [x] Fix failures, run CI and commit.
 
 ### Task 3: Review and package
 
 Files: wordpress-plugin/README.md and release documentation.
 
-- [ ] Document exact tested support, setup and Legacy/Astra boundaries.
-- [ ] Review changes, verify green CI, package an installable upgrade and persist source to the repository.
-- [ ] Deliver the tested ZIP with concise installation instructions; do not claim a live customer connection.
+- [x] Document exact tested support, setup and Legacy/Astra boundaries.
+- [x] Review changes, verify green CI, package an installable upgrade and persist source to the repository.
+- [x] Deliver the tested ZIP with concise installation instructions; do not claim a live customer connection.
