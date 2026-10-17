@@ -46,7 +46,7 @@ try{
  await page.setViewportSize({width:390,height:844});await page.goto(base+'/?page_id='+fixture.id+'&preview=true');
  await page.getByText('Visually edited Spectra headline',{exact:true}).first().waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2),false,'Mobile page must not overflow');
- const cards=await page.locator('.spectra-container').filter({has:page.getByText('Professional certification',{exact:true})}).count();assert.ok(cards>0,'Native cards render');
+ const cards=await page.locator('.wp-block-spectra-container').filter({has:page.getByText('Professional certification',{exact:true})}).count();assert.ok(cards>0,'Native cards render');
  assert.equal(errors.length,0,errors.join('\n'));
  console.log('PASS: native Spectra page renders under Astra '+fixture.theme+' on mobile without overflow (Spectra '+fixture.spectra+')');
 }catch(error){await page.screenshot({path:'/tmp/wpgptvibe-spectra-failure.png',fullPage:true});console.error('URL:',page.url());console.error('Page errors:',errors);console.error((await page.locator('body').innerText()).slice(0,2000));throw error;}finally{await browser.close();}
