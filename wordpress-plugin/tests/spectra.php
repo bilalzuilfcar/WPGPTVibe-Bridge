@@ -15,6 +15,7 @@ if(SPECTRA_BLOCKS_VER!=='1.0.11'){
  rejects(fn()=>WPGPTVibe_Block_Manager::preview(700,$p['hash'],[['type'=>'duplicate','path'=>[0]]]),'tested Spectra Blocks');exit;
 }
 try{$block=WPGPTVibe_Block_Manager::new_block($descriptor);}catch(Throwable $e){throw new RuntimeException('FAIL: native Spectra page creation is unavailable: '.$e->getMessage());}
+check(($block['attrs']['variationSelected']??false)===true,'generated containers bypass the layout picker and expose editable children');
 check($block['blockName']==='spectra/container'&&$block['innerBlocks'][0]['blockName']==='spectra/content','native Spectra container and content creation');
 $roundtrip=parse_blocks(serialize_block($block))[0];
 check($roundtrip['innerBlocks'][0]['attrs']['text']==='Native visual headline','native dynamic Spectra serialization preserves editable text');

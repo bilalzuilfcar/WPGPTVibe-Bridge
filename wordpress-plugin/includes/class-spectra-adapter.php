@@ -32,6 +32,8 @@ final class WPGPTVibe_Spectra_Adapter {
     public static function create(array $descriptor,int $depth,?string $parent=null): array {
         self::require_available();$name=$descriptor['name'];self::parent($name,$parent);
         $attributes=self::attributes($name,$descriptor['attributes']??[]);
+        // Spectra hides all container children behind its layout picker until this flag is set.
+        if($name==='spectra/container'){$attributes['variationSelected']=true;}
         $children=$descriptor['children']??[];
         if(!self::container($name)&&$children){throw new RuntimeException('This Spectra block cannot contain child blocks.');}
         if(count($children)>100){throw new RuntimeException('Too many child blocks.');}
