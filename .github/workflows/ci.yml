@@ -8,14 +8,79 @@ on:
 jobs:
   wordpress-plugin:
     runs-on: ubuntu-latest
+    env:
+      WPGPTVIBE_TEST_URL: https://127.0.0.1:8090
+      WPGPTVIBE_WP_CORE: /tmp/wpgptvibe-core/wordpress
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test-only-password
+          MYSQL_DATABASE: wpgptvibe_test
+        ports: [3306:3306]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptest-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, dom
+      - name: Prepare disposable WordPress
+        run: |
+          curl -fsSL https://wordpress.org/wordpress-7.1.3.zip -o /tmp/wordpress.zip
+          unzip -q /tmp/wordpress.zip -d /tmp/wpgptvibe-core
+          cp -R wordpress-plugin /tmp/wpgptvibe-core/wordpress/wp-content/plugins/wpgptvibe-bridge
+          cp wordpress-plugin/tests/ci-wp-config.php /tmp/wpgptvibe-core/wordpress/wp-config.php
+          php -r "define('WP_INSTALLING', true); require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/upgrade.php'; wp_install('WPGPTVibe Test', 'admin', 'test@example.com', true, '', 'test-only-password'); update_option('permalink_structure', '/%postname%/');"
+          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once '/tmp/wpgptvibe-core/wordpress/wp-admin/includes/plugin.php'; activate_plugin('wpgptvibe-bridge/wpgptvibe-bridge.php');"
+      - name: WordPress diagnostics on failure
+        if: failure()
+        run: cat /tmp/wpgptvibe-core/wordpress/wp-content/debug.log || true
+      - name: Plugin behavioral and editor tests
+        env:
+          WPGPTVIBE_WP_CORE: /tmp/wpgptvibe-core/wordpress
+          WPGPTVIBE_TEST_SITE: '1'
+        run: |
+          php wordpress-plugin/tests/spectra.php
+          SPECTRA_TEST_VERSION=1.0.10 php wordpress-plugin/tests/spectra.php
+          node wordpress-plugin/tests/editor-check.cjs
+          php wordpress-plugin/tests/wordpress-integration.php
+      - name: Install pinned Spectra Blocks and Astra on disposable site
+        run: |
+          curl -fsSL https://downloads.wordpress.org/plugin/spectra-blocks.1.0.11.zip -o /tmp/spectra.zip
+          unzip -q /tmp/spectra.zip -d /tmp/wpgptvibe-core/wordpress/wp-content/plugins
+          curl -fsSL https://downloads.wordpress.org/theme/astra.4.14.1.zip -o /tmp/astra.zip
+          unzip -q /tmp/astra.zip -d /tmp/wpgptvibe-core/wordpress/wp-content/themes
+          php -r "require '/tmp/wpgptvibe-core/wordpress/wp-load.php'; require_once ABSPATH.'wp-admin/includes/plugin.php'; \$result = activate_plugin('spectra-blocks/spectra-blocks.php'); if (is_wp_error(\$result)) { throw new RuntimeException(\$result->get_error_message()); } switch_theme('astra'); update_option('__spectra_blocks_do_redirect', false);"
+      - name: Spectra real WordPress integration
+        env:
+          WPGPTVIBE_TEST_SITE: '1'
+        run: php wordpress-plugin/tests/spectra-integration.php
+      - name: Visual editor acceptance
+        run: |
+          npm --prefix mcp-server install --omit=dev
+          node mcp-server/node_modules/playwright/cli.js install --with-deps chromium
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout /tmp/wpgptvibe-test.key -out /tmp/wpgptvibe-test.crt -days 1 -subj '/CN=127.0.0.1' > /tmp/wpgptvibe-tls.log 2>&1
+          php -S 127.0.0.1:8091 -t /tmp/wpgptvibe-core/wordpress wordpress-plugin/tests/browser-router.php > /tmp/wpgptvibe-php-server.log 2>&1 &
+          node wordpress-plugin/tests/https-proxy.cjs > /tmp/wpgptvibe-proxy.log 2>&1 &
+          node wordpress-plugin/tests/browser-acceptance.mjs
+          node wordpress-plugin/tests/spectra-browser.mjs
+      - name: Browser diagnostics on failure
+        if: failure()
+        run: |
+          cat /tmp/wpgptvibe-php-server.log || true
+          cat /tmp/wpgptvibe-core/wordpress/wp-content/debug.log || true
       - name: PHP syntax check
         run: find wordpress-plugin -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Package WordPress plugin
         run: |
           mkdir -p build/wpgptvibe-bridge
           cp -R wordpress-plugin/. build/wpgptvibe-bridge/
+          python -c "import shutil; shutil.rmtree('build/wpgptvibe-bridge/tests')"
           cd build
           zip -r wpgptvibe-bridge.zip wpgptvibe-bridge
       - uses: actions/upload-artifact@v4
