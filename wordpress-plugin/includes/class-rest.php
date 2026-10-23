@@ -286,7 +286,11 @@ final class WPGPTVibe_REST {
     }
 
     public static function batch_update_meta(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_Meta_Manager::batch_update(self::array_param($request, 'items')));
+        return self::attempt(static function () use ($request) {
+            $items = self::array_param($request, 'items');
+            foreach ($items as $item) { WPGPTVibe_Review_Gate::assert_unpublished((int) ($item['id'] ?? 0)); }
+            return WPGPTVibe_Meta_Manager::batch_update($items);
+        });
     }
 
     public static function list_media(WP_REST_Request $request) {
@@ -328,7 +332,11 @@ final class WPGPTVibe_REST {
     }
 
     public static function batch_update_seo(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_SEO_Manager::batch_update(self::array_param($request, 'items')));
+        return self::attempt(static function () use ($request) {
+            $items = self::array_param($request, 'items');
+            foreach ($items as $item) { WPGPTVibe_Review_Gate::assert_unpublished((int) ($item['id'] ?? 0)); }
+            return WPGPTVibe_SEO_Manager::batch_update($items);
+        });
     }
 
     public static function purge_cache(WP_REST_Request $request) {
@@ -362,7 +370,7 @@ final class WPGPTVibe_REST {
     }
 
     public static function update_calculator(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_Calculator_Manager::update((string) $request['slug'], self::body($request)));
+        return self::attempt(static function () { throw new RuntimeException('Calculator changes require a reviewable staging implementation. Live updates are disabled.'); });
     }
 
     public static function validate_calculator(WP_REST_Request $request) {
@@ -378,7 +386,7 @@ final class WPGPTVibe_REST {
     }
 
     public static function batch_update_calculators(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_Calculator_Manager::batch_update(self::array_param($request, 'items')));
+        return self::attempt(static function () { throw new RuntimeException('Calculator batch changes require staging. Live updates are disabled.'); });
     }
 
     private static function body(WP_REST_Request $request): array {
