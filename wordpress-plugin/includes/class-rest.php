@@ -224,7 +224,10 @@ final class WPGPTVibe_REST {
         if ((string) $request->get_param('confirm') !== 'PUBLISH') {
             return new WP_Error('wpgptvibe_confirmation_required', 'Publishing requires confirm=PUBLISH.', ['status' => 400]);
         }
-        return self::attempt(static fn() => WPGPTVibe_Theme_Manager::publish_draft());
+        return self::attempt(static function () {
+            WPGPTVibe_Review_Gate::consume_theme_approval();
+            return WPGPTVibe_Theme_Manager::publish_draft();
+        });
     }
 
     public static function rollback_theme(WP_REST_Request $request) {
@@ -276,7 +279,10 @@ final class WPGPTVibe_REST {
     }
 
     public static function update_meta(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_Meta_Manager::update((int) $request['id'], self::array_param($request, 'meta')));
+        return self::attempt(static function () use ($request) {
+            WPGPTVibe_Review_Gate::assert_unpublished((int) $request['id']);
+            return WPGPTVibe_Meta_Manager::update((int) $request['id'], self::array_param($request, 'meta'));
+        });
     }
 
     public static function batch_update_meta(WP_REST_Request $request) {
@@ -315,7 +321,10 @@ final class WPGPTVibe_REST {
     }
 
     public static function update_seo(WP_REST_Request $request) {
-        return self::attempt(static fn() => WPGPTVibe_SEO_Manager::update((int) $request['id'], self::body($request)));
+        return self::attempt(static function () use ($request) {
+            WPGPTVibe_Review_Gate::assert_unpublished((int) $request['id']);
+            return WPGPTVibe_SEO_Manager::update((int) $request['id'], self::body($request));
+        });
     }
 
     public static function batch_update_seo(WP_REST_Request $request) {
