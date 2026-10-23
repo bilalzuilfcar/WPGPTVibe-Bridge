@@ -11,6 +11,7 @@ final class WPGPTVibe_Admin {
         add_action('admin_post_wpgptvibe_revoke_token', [self::class, 'revoke_token']);
         add_action('admin_post_wpgptvibe_save_capabilities', [self::class, 'save_capabilities']);
         add_action('admin_post_wpgptvibe_save_meta_allowlist', [self::class, 'save_meta_allowlist']);
+        add_action('admin_post_wpgptvibe_approve_theme', [self::class, 'approve_theme']);
     }
 
     public static function menu(): void {
@@ -63,6 +64,18 @@ final class WPGPTVibe_Admin {
                 </tbody>
             </table>
 
+            <h2>Manual Publishing Review</h2>
+            <p>Bridge-created posts and pages remain drafts or pending review. Changes to published content are blocked through the Bridge API. Review and publish posts in the regular WordPress editor.</p>
+            <p>Theme changes require an administrator to inspect the draft preview before publication. An approval applies only to the exact draft files and expires after 15 minutes.</p>
+            <?php if (!empty($draft['exists'])): ?>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <?php wp_nonce_field('wpgptvibe_approve_theme'); ?>
+                    <input type="hidden" name="action" value="wpgptvibe_approve_theme">
+                    <?php submit_button('Approve Current Theme Draft for Publication', 'secondary'); ?>
+                </form>
+                <p>Approval status: <?php echo WPGPTVibe_Review_Gate::theme_approval_status()['approved'] ? 'Approved (time-limited)' : 'Not approved'; ?></p>
+            <?php endif; ?>
+
             <h2>API Token</h2>
             <p>Generate or rotate creates a new token and immediately invalidates the previous token.</p>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline-block;margin-right:8px">
@@ -108,6 +121,17 @@ final class WPGPTVibe_Admin {
             <pre style="max-width:1000px;max-height:500px;overflow:auto;background:#fff;padding:16px;border:1px solid #ccd0d4"><?php echo esc_html(wp_json_encode(WPGPTVibe_Audit_Log::recent(50), JSON_PRETTY_PRINT)); ?></pre>
         </div>
         <?php
+    }
+
+    public static function approve_theme(): void {
+        self::guard('wpgptvibe_approve_theme');
+        try {
+            WPGPTVibe_Review_Gate::approve_theme();
+        } catch (Throwable $error) {
+            wp_die(esc_html($error->getMessage()));
+        }
+        wp_safe_redirect(self::page_url());
+        exit;
     }
 
     public static function generate_token(): void {
