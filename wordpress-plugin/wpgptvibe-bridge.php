@@ -23,6 +23,7 @@ require_once WPGPTVIBE_DIR . 'includes/class-auth.php';
 require_once WPGPTVIBE_DIR . 'includes/class-request-guard.php';
 require_once WPGPTVIBE_DIR . 'includes/class-theme-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-theme-operations.php';
+require_once WPGPTVIBE_DIR . 'includes/class-review-gate.php';
 require_once WPGPTVIBE_DIR . 'includes/class-content-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-meta-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-media-manager.php';
