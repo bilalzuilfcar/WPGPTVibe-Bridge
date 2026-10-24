@@ -45,7 +45,7 @@ jobs:
           WPGPTVIBE_WP_CORE: /tmp/wpgptvibe-core/wordpress
           WPGPTVIBE_TEST_SITE: '1'
         run: |
-          php wordpress-plugin/tests/spectra.php
+          php wordpress-plugin/tests/drafts.php
           SPECTRA_TEST_VERSION=1.0.10 php wordpress-plugin/tests/spectra.php
           node wordpress-plugin/tests/editor-check.cjs
           php wordpress-plugin/tests/wordpress-integration.php
@@ -59,7 +59,9 @@ jobs:
       - name: Spectra real WordPress integration
         env:
           WPGPTVIBE_TEST_SITE: '1'
-        run: php wordpress-plugin/tests/spectra-integration.php
+        run: |
+          php wordpress-plugin/tests/spectra-integration.php
+          php wordpress-plugin/tests/review-integration.php
       - name: Visual editor acceptance
         run: |
           npm --prefix mcp-server install --omit=dev
@@ -69,6 +71,7 @@ jobs:
           node wordpress-plugin/tests/https-proxy.cjs > /tmp/wpgptvibe-proxy.log 2>&1 &
           node wordpress-plugin/tests/browser-acceptance.mjs
           node wordpress-plugin/tests/spectra-browser.mjs
+          node wordpress-plugin/tests/review-browser.mjs
       - name: Browser diagnostics on failure
         if: failure()
         run: |

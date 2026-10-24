@@ -2,13 +2,13 @@
 // Small WordPress adapter harness; real block parser is loaded from the supplied core checkout.
 define('ABSPATH', __DIR__ . '/');
 define('MINUTE_IN_SECONDS',60);
-define('WPGPTVIBE_VERSION', '0.4.0');
+define('WPGPTVIBE_VERSION', '0.6.0');
 $GLOBALS['transients'] = [];
 function get_transient($k){return $GLOBALS['transients'][$k]??false;}
 function set_transient($k,$v,$ttl){$GLOBALS['transients'][$k]=$v;return true;}
 function delete_transient($k){unset($GLOBALS['transients'][$k]);}
 $GLOBALS['options'] = []; $GLOBALS['posts'] = []; $GLOBALS['meta'] = []; $GLOBALS['current_user'] = 1;
-class WP_Post { public $ID; public $post_content; public $post_status='draft'; public $post_type='page'; public $post_title='Test'; public $post_modified_gmt='2026-10-13 00:00:00'; public function __construct($id,$content){$this->ID=$id;$this->post_content=$content;} }
+class WP_Post { public $ID; public $post_content; public $post_status='draft'; public $post_type='page'; public $post_title='Test'; public $post_excerpt=''; public $post_modified_gmt='2026-10-13 00:00:00'; public function __construct($id,$content){$this->ID=$id;$this->post_content=$content;} }
 class WP_Error { public function __construct(public $code,public $message,public $data=[]){} public function get_error_message(){return $this->message;} }
 function is_wp_error($x){return $x instanceof WP_Error;}
 function get_option($key,$default=false){return $GLOBALS['options'][$key]??$default;}

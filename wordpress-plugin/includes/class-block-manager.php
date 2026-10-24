@@ -168,6 +168,7 @@ final class WPGPTVibe_Block_Manager {
     public static function change(int $id,string $expected_hash,array $operations,bool $confirm_live,?string $affected_hash=null): array {
         return self::locked($id, static function() use($id,$expected_hash,$operations,$confirm_live,$affected_hash) {
             clean_post_cache($id); $post=self::post($id);
+            if(class_exists('WPGPTVibe_Review_Gate')){WPGPTVibe_Review_Gate::assert_editable($id);}
             if (in_array($post->post_status,['publish','future','private'],true) && !$confirm_live) { throw new RuntimeException('This is published or scheduled content. Confirm the live change first.'); }
             self::confirm_shared($post,$affected_hash);
             if (!wp_revisions_enabled($post)) { throw new RuntimeException('Enable WordPress revisions before making recoverable page changes.'); }
@@ -208,6 +209,7 @@ final class WPGPTVibe_Block_Manager {
     public static function restore(int $id,int $revision_id,string $expected_hash,bool $confirm_live,?string $affected_hash=null): array {
         return self::locked($id,static function()use($id,$revision_id,$expected_hash,$confirm_live,$affected_hash){
             clean_post_cache($id);$post=self::post($id);
+            if(class_exists('WPGPTVibe_Review_Gate')){WPGPTVibe_Review_Gate::assert_editable($id);}
             if(!hash_equals(hash('sha256',$post->post_content),$expected_hash)){throw new RuntimeException('This page has newer edits.');}
             self::confirm_shared($post,$affected_hash);
             if(!wp_revisions_enabled($post)){throw new RuntimeException('WordPress revisions are disabled.');}

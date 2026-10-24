@@ -42,3 +42,5 @@ $ba=WPGPTVibe_Block_Manager::change($b['id'],$bCurrent['hash'],[['type'=>'insert
 $aCurrent=WPGPTVibe_Block_Manager::get($a['id']);
 try{WPGPTVibe_Block_Manager::restore($a['id'],$oldA->ID,$aCurrent['hash'],true,$aCurrent['shared_usage']['hash']);throw new RuntimeException('Recursive restore should fail.');}catch(RuntimeException $e){verify(str_contains($e->getMessage(),'recursive'),'revision restore rejects a new transitive reference cycle');}
 file_put_contents('/tmp/wpgptvibe-test-oauth.json',wp_json_encode(['parameters'=>$p,'verifier'=>$verifier]));
+
+file_put_contents('/tmp/wpgptvibe-test-identity.json',wp_json_encode(['access_token'=>$token['body']['access_token']]));

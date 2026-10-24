@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPGPTVibe Bridge
  * Description: Secure WordPress REST bridge for WPGPTVibe MCP.
- * Version: 0.5.0
+ * Version: 0.6.0
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: SPTIO Smart Solutions
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WPGPTVIBE_VERSION', '0.5.0');
+define('WPGPTVIBE_VERSION', '0.6.0');
 define('WPGPTVIBE_FILE', __FILE__);
 define('WPGPTVIBE_DIR', plugin_dir_path(__FILE__));
 define('WPGPTVIBE_URL', plugin_dir_url(__FILE__));
@@ -23,6 +23,7 @@ require_once WPGPTVIBE_DIR . 'includes/class-auth.php';
 require_once WPGPTVIBE_DIR . 'includes/class-request-guard.php';
 require_once WPGPTVIBE_DIR . 'includes/class-theme-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-theme-operations.php';
+require_once WPGPTVIBE_DIR . 'includes/class-review-gate.php';
 require_once WPGPTVIBE_DIR . 'includes/class-content-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-meta-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-media-manager.php';
@@ -38,6 +39,7 @@ require_once WPGPTVIBE_DIR . 'includes/class-rest.php';
 require_once WPGPTVIBE_DIR . 'includes/vendor-autoload.php';
 require_once WPGPTVIBE_DIR . 'includes/class-spectra-adapter.php';
 require_once WPGPTVIBE_DIR . 'includes/class-block-manager.php';
+require_once WPGPTVIBE_DIR . 'includes/class-draft-manager.php';
 require_once WPGPTVIBE_DIR . 'includes/class-patterns.php';
 require_once WPGPTVIBE_DIR . 'includes/class-shared-patterns.php';
 require_once WPGPTVIBE_DIR . 'includes/class-operation-store.php';

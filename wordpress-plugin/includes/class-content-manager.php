@@ -38,6 +38,7 @@ final class WPGPTVibe_Content_Manager {
 
     public static function create(string $post_type, array $data): array {
         $post_type = self::assert_post_type($post_type);
+        WPGPTVibe_Review_Gate::assert_draft_status($data);
         $postarr = self::map_fields($data);
         $postarr['post_type'] = $post_type;
         $postarr['post_status'] = sanitize_key((string) ($data['status'] ?? 'draft')) ?: 'draft';
@@ -53,11 +54,17 @@ final class WPGPTVibe_Content_Manager {
     }
 
     public static function update(int $id, array $data): array {
+        return WPGPTVibe_Block_Manager::locked($id,static fn()=>self::update_draft($id, $data));
+    }
+
+    private static function update_draft(int $id, array $data): array {
         $post = get_post($id);
         if (!$post instanceof WP_Post) {
             throw new RuntimeException('Content not found.');
         }
         self::assert_post_type($post->post_type);
+        WPGPTVibe_Review_Gate::assert_unpublished($id);
+        WPGPTVibe_Review_Gate::assert_draft_status($data);
         $postarr = self::map_fields($data);
         $postarr['ID'] = $id;
 
@@ -72,12 +79,18 @@ final class WPGPTVibe_Content_Manager {
     }
 
     public static function delete(int $id, bool $force = false): array {
+        return WPGPTVibe_Block_Manager::locked($id,static fn()=>self::delete_draft($id, $force));
+    }
+
+    private static function delete_draft(int $id, bool $force = false): array {
         $post = get_post($id);
         if (!$post instanceof WP_Post) {
             throw new RuntimeException('Content not found.');
         }
         self::assert_post_type($post->post_type);
-        $deleted = wp_delete_post($id, $force);
+        WPGPTVibe_Review_Gate::assert_unpublished($id);
+        if ($force) { throw new RuntimeException('Permanent deletion is disabled through the Bridge API.'); }
+        $deleted = wp_delete_post($id, false);
         if (!$deleted) {
             throw new RuntimeException('Unable to delete content.');
         }

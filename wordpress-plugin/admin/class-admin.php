@@ -13,6 +13,7 @@ final class WPGPTVibe_Admin {
         add_action('admin_post_wpgptvibe_revoke_token', [self::class, 'revoke_token']);
         add_action('admin_post_wpgptvibe_save_capabilities', [self::class, 'save_capabilities']);
         add_action('admin_post_wpgptvibe_save_meta_allowlist', [self::class, 'save_meta_allowlist']);
+        add_action('admin_post_wpgptvibe_approve_theme', [self::class, 'approve_theme']);
     }
 
     public static function assets(string $hook): void {
@@ -51,7 +52,7 @@ final class WPGPTVibe_Admin {
             <p><strong>MCP server URL</strong> <code style="user-select:all"><?php echo esc_html(WPGPTVibe_OAuth::resource()); ?></code></p>
             <p><button type="button" class="button button-secondary" id="wpgptvibe-test-connection">Test Connection</button></p>
             <p id="wpgptvibe-connection-result" role="status" aria-live="polite"></p>
-            <ol><li>In ChatGPT, open Plugins and choose Add custom MCP server.</li><li>Paste the server URL above, select OAuth, then choose dynamic client registration (DCR).</li><li>Use scopes <code>site:read pages:read pages:write layout:write media:write seo:write</code> for page editing. Add publication or theme scopes only when needed.</li><li>Sign in to this WordPress website and review the requested permissions.</li><li>Enable the corresponding permissions below, then ask ChatGPT to inspect the site and create a draft page.</li></ol>
+            <ol><li>In ChatGPT, open Plugins and choose Add custom MCP server.</li><li>Paste the server URL above, select OAuth, then choose dynamic client registration (DCR).</li><li>Use scopes <code>site:read pages:read pages:write layout:write media:write seo:write</code> for page editing. Page publication stays in WordPress. Theme publication requires a separate, time-limited WordPress-admin approval.</li><li>Sign in to this WordPress website and review the requested permissions.</li><li>Enable the corresponding permissions below, then ask ChatGPT to inspect the site and create a draft page.</li></ol>
             <p>Pages remain editable in WordPress. Open the page editor, click text, replace images, and use List View to move or duplicate sections.</p>
             <table class="widefat striped" style="max-width:1000px"><tbody>
                 <tr><th>HTTPS</th><td><?php echo is_ssl() ? 'Available' : 'Required. Open this dashboard over HTTPS.'; ?></td></tr>
@@ -101,6 +102,26 @@ final class WPGPTVibe_Admin {
                     <tr><th>Plugin Version</th><td><?php echo esc_html(WPGPTVIBE_VERSION); ?></td></tr>
                 </tbody>
             </table>
+
+            <h2>Manual Publishing Review</h2>
+            <p>Bridge-created posts and pages remain drafts or pending review. Changes to published content are blocked through the Bridge API. Review and publish posts in the regular WordPress editor. To redesign an existing live page, ask ChatGPT to create a review copy; the original stays untouched.</p>
+            <p>Theme changes require an administrator to inspect the draft preview before publication. An approval applies only to the exact draft files and expires after 15 minutes.</p>
+            <?php if (!empty($draft['exists'])): ?>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <?php wp_nonce_field('wpgptvibe_approve_theme'); ?>
+                    <input type="hidden" name="action" value="wpgptvibe_approve_theme">
+                    <?php submit_button('Approve Current Theme Draft for Publication', 'secondary'); ?>
+                </form>
+                <p>Approval status: <?php echo WPGPTVibe_Review_Gate::theme_approval_status()['approved'] ? 'Approved (time-limited)' : 'Not approved'; ?></p>
+            <?php endif; ?>
+
+            <h2>Pages for Review</h2>
+            <p>Draft copies do not replace their original pages automatically. Review the copy, then decide what to publish in WordPress.</p>
+            <table class="widefat striped" style="max-width:1000px"><thead><tr><th>Page</th><th>Status</th><th>Original</th><th>Review</th></tr></thead><tbody>
+            <?php $reviews=WPGPTVibe_Draft_Manager::list(); foreach($reviews as $review): ?>
+                <tr><td><?php echo esc_html($review['title']); ?></td><td><?php echo esc_html($review['status']); ?></td><td><?php if($review['source_id']): ?><a href="<?php echo esc_url(get_edit_post_link($review['source_id'],'raw')); ?>">View original</a><?php else: ?>New page<?php endif; ?></td><td><a class="button" href="<?php echo esc_url($review['editor_url']); ?>">Review in editor</a> <a class="button" href="<?php echo esc_url($review['preview_url']); ?>">Preview</a></td></tr>
+            <?php endforeach; if(!$reviews): ?><tr><td colspan="4">No pages awaiting review.</td></tr><?php endif; ?>
+            </tbody></table>
 
             <h2>API Token</h2>
             <p>Generate or rotate creates a new token and immediately invalidates the previous token.</p>
@@ -160,6 +181,17 @@ final class WPGPTVibe_Admin {
         // Existing clients are removed when their callback is no longer approved.
         $clients=get_option('wpgptvibe_oauth_clients',[]);foreach($clients as $id=>$client){if(!in_array($client['redirect_uri'],$urls,true)){unset($clients[$id]);}}update_option('wpgptvibe_oauth_clients',$clients,false);
         wp_safe_redirect(self::page_url());exit;
+    }
+
+    public static function approve_theme(): void {
+        self::guard('wpgptvibe_approve_theme');
+        try {
+            WPGPTVibe_Review_Gate::approve_theme();
+        } catch (Throwable $error) {
+            wp_die(esc_html($error->getMessage()));
+        }
+        wp_safe_redirect(self::page_url());
+        exit;
     }
 
     public static function generate_token(): void {

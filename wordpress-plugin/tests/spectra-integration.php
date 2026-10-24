@@ -38,6 +38,5 @@ $revision=null;foreach(wp_get_post_revisions($publication['id']) as $r){if(str_c
 spectra_verify((bool)$revision,'native Spectra revisions preserve previous editable content');
 $restored=WPGPTVibe_Block_Manager::restore($publication['id'],$revision->ID,$changed['hash'],false);
 spectra_verify(str_contains(do_blocks(get_post($publication['id'])->post_content),'Before revision'),'Spectra revision restore renders original content');
-$published=WPGPTVibe_MCP_Tools::execute('publish_page',['id'=>$publication['id'],'expected_hash'=>$restored['hash'],'confirm'=>'PUBLISH','operation_id'=>'spectra-publish-test'],$identity);
-spectra_verify(get_post($publication['id'])->post_status==='publish','separate publication tool publishes a Spectra page');
+try{WPGPTVibe_MCP_Tools::execute('publish_page',['id'=>$publication['id'],'expected_hash'=>$restored['hash'],'confirm'=>'PUBLISH','operation_id'=>'spectra-publish-test'],$identity);throw new RuntimeException('API publication was allowed');}catch(RuntimeException $e){spectra_verify(str_contains($e->getMessage(),'Manual review'),'Spectra publication requires the WordPress editor');}
 file_put_contents('/tmp/wpgptvibe-spectra-test.json',wp_json_encode(['id'=>$created['id'],'image_ids'=>$images,'image_urls'=>array_map('wp_get_attachment_url',$images),'theme'=>wp_get_theme()->get('Version'),'spectra'=>SPECTRA_BLOCKS_VER]));

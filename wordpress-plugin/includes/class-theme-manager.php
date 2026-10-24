@@ -228,6 +228,11 @@ final class WPGPTVibe_Theme_Manager {
     }
 
     public static function publish_draft(): array {
+        return WPGPTVibe_Review_Gate::theme_lock(static fn()=>self::publish_approved_draft());
+    }
+
+    private static function publish_approved_draft(): array {
+        if(!WPGPTVibe_Review_Gate::theme_approval_status()['approved']){throw new RuntimeException('A WordPress administrator must approve this draft theme in Tools > WPGPTVibe before publication.');}
         $draft = self::require_draft();
         $draft_theme = wp_get_theme($draft['stylesheet']);
         if (!$draft_theme->exists() || !empty($draft_theme->errors())) {
@@ -259,6 +264,9 @@ final class WPGPTVibe_Theme_Manager {
             self::delete_directory($release_root);
             throw new RuntimeException('Release theme is not valid and cannot be activated.');
         }
+
+        try { WPGPTVibe_Review_Gate::consume_theme_approval($release_root); }
+        catch(Throwable $error){ self::delete_directory($release_root); throw $error; }
 
         $releases = get_option(self::RELEASES_OPTION, []);
         if (!is_array($releases)) {
