@@ -5,6 +5,8 @@ const fixture=JSON.parse(fs.readFileSync('/tmp/wpgptvibe-review-test.json','utf8
 const token=JSON.parse(fs.readFileSync('/tmp/wpgptvibe-test-identity.json','utf8')).access_token;
 const base='https://127.0.0.1:8090';const browser=await chromium.launch({headless:true});const page=await browser.newPage({ignoreHTTPSErrors:true});
 try{
+ const unsafe=await page.request.get(fixture.unsafe_preview_url);assert.equal(unsafe.status(),403);assert.match(await unsafe.text(),/staging/);
+ console.log('PASS: previously valid theme preview token refuses changed executable files before theme load');
  await page.goto(base+'/wp-login.php');await page.request.post(base+'/wp-login.php',{form:{log:'admin',pwd:'test-only-password','wp-submit':'Log In',redirect_to:base+'/wp-admin/',testcookie:'1'}});
  await page.goto(base+'/wp-admin/tools.php?page=wpgptvibe');
  await page.getByRole('heading',{name:'Pages for Review',exact:true}).waitFor();await page.getByRole('link',{name:'Review in editor',exact:true}).first().waitFor();

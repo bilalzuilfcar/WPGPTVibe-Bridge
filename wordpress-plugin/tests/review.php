@@ -47,3 +47,10 @@ unlink($base.'/draft/functions.php');
 file_put_contents($base.'/draft/style.css',"Theme Name: Changed\nTemplate: evil-parent");
 rejects(fn()=>WPGPTVibe_Review_Gate::assert_safe_theme_preview($base.'/draft',$base.'/source'),'staging');
 file_put_contents($base.'/draft/style.css','Theme Name: Review');
+
+$GLOBALS['posts'][801]->post_status='pending';
+$GLOBALS['posts'][1100]=new WP_Post(1100,get_post(801)->post_content);
+$GLOBALS['revision_parents'][1100]=801;
+$pending=WPGPTVibe_Block_Manager::get(801);
+$restored=WPGPTVibe_Block_Manager::restore(801,1100,$pending['hash'],false);
+check($restored['status']==='pending','pending revision restoration needs no live confirmation');

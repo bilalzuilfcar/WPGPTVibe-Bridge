@@ -38,7 +38,8 @@ review_reject(fn()=>WPGPTVibe_Theme_Manager::publish_draft(),'administrator');
 WPGPTVibe_Review_Gate::approve_theme();$published=WPGPTVibe_Theme_Manager::publish_draft();
 review_verify(get_stylesheet()===$published['release_stylesheet'],'exact human-approved theme publishes through the guarded manager');
 review_reject(fn()=>WPGPTVibe_Theme_Manager::publish_draft(),'administrator');switch_theme($original_theme);
+$stale_preview=WPGPTVibe_Theme_Manager::preview_url()['url'];
 file_put_contents($draft_root.'/unapproved.php','<?php echo 1;');
 review_reject(fn()=>WPGPTVibe_Theme_Manager::preview_url(),'staging');
-unlink($draft_root.'/unapproved.php');
-file_put_contents('/tmp/wpgptvibe-review-test.json',wp_json_encode(['source_id'=>$source,'draft_id'=>$copy['id'],'source_hash'=>WPGPTVibe_Block_Manager::get($source)['hash']]));
+// Keep an old valid preview token and a now-unsafe draft for HTTP rejection testing.
+file_put_contents('/tmp/wpgptvibe-review-test.json',wp_json_encode(['unsafe_preview_url'=>$stale_preview,'source_id'=>$source,'draft_id'=>$copy['id'],'source_hash'=>WPGPTVibe_Block_Manager::get($source)['hash']]));

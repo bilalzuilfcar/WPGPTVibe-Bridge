@@ -19,7 +19,7 @@ function get_post($id){return $GLOBALS['posts'][$id]??null;}
 function clean_post_cache($id){}
 function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$id][$key]??'';}
 function update_post_meta($id,$key,$value){$GLOBALS['meta'][$id][$key]=$value;}
-function wp_is_post_revision($id){return false;}
+function wp_is_post_revision($id){return $GLOBALS['revision_parents'][$id]??false;}
 function current_user_can($cap,...$args){return !($GLOBALS['deny']??false);}
 function get_current_user_id(){return $GLOBALS['current_user'];}
 function wp_set_current_user($id){$GLOBALS['current_user']=$id;}
@@ -43,6 +43,7 @@ function get_permalink($id){return home_url('/?p='.(is_object($id)?$id->ID:$id))
 function post_type_supports($type,$feature){return !($GLOBALS['no_revisions']??false);}
 function wp_revisions_enabled($post){return !($GLOBALS['no_revisions']??false);}
 function wp_save_post_revision($id){return 99;}
+function wp_restore_post_revision($id,$fields){return $GLOBALS['revision_parents'][$id]??false;}
 function wp_update_post($data,$error=false){$p=$GLOBALS['posts'][$data['ID']];foreach($data as $k=>$v){if($k!=='ID')$p->$k=$v;}return $p->ID;}
 function wp_insert_post($data,$error=false){$id=count($GLOBALS['posts'])+1;$p=new WP_Post($id,$data['post_content']??'');foreach($data as $k=>$v)$p->$k=$v;$GLOBALS['posts'][$id]=$p;return $id;}
 function get_post_type_object($type){return (object)['public'=>true,'show_ui'=>true,'cap'=>(object)['create_posts'=>'edit_pages','publish_posts'=>'publish_pages']];}
