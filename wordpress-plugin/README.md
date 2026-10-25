@@ -1,13 +1,13 @@
-# WPGPTVibe Bridge 0.5.0
+# WPGPTVibe Bridge 0.6.0
 
 A WordPress plugin for connecting a website directly to ChatGPT through MCP. A separate Node application is optional.
 
 ## Install and connect
 
-1. Upload `wpgptvibe-bridge-0.5.0.zip` in WordPress → Plugins → Add Plugin → Upload Plugin, then activate it.
+1. Upload `wpgptvibe-bridge.zip` in WordPress → Plugins → Add Plugin → Upload Plugin, then activate it.
 2. Open Tools → WPGPTVibe. Check HTTPS and the two discovery links.
 3. In ChatGPT Plugins, choose Add custom MCP server. Copy the MCP URL from WordPress, select OAuth and dynamic client registration (DCR).
-4. Use `site:read pages:read pages:write layout:write media:write seo:write` for ordinary page work. Add `pages:publish` only when publication is required.
+4. Use `site:read pages:read pages:write layout:write media:write seo:write` for ordinary page work. Publication remains in WordPress; `pages:publish` does not bypass manual review.
 5. Sign in to WordPress and review the requested permissions. If ChatGPT shows a different callback URL, copy that exact HTTPS URL into the plugin's approved callbacks, then reconnect.
 6. Enable Read Content, Manage Content and Edit Layout. Enable media, SEO and recovery capabilities as needed. Publishing and theme permissions remain separate.
 7. Ask ChatGPT to inspect the website, create a draft from a pattern, and return the WordPress editor link.
@@ -40,9 +40,9 @@ Test matrix: WordPress 7.1.3, PHP 8.3, Spectra Blocks 1.0.11 and Astra 4.14.1 (d
 
 ## Shared sections and recovery
 
-Synced patterns can be reused across pages. Read the usage report before updating one: the plugin requires the affected-page hash as well as the pattern's content hash. The report includes indirect references, templates, navigation and block widgets. It refuses to claim a complete impact report on sites exceeding its 500-item scan limit.
+New synced patterns can be inserted into draft pages. Existing synced patterns require native WordPress editing. Usage reports cover database content and block widgets, excluding theme files, and refuse scans over the limit.
 
-Mutations use operation IDs. Identical retries return the original result for seven days; conflicting or uncertain retries fail safely. Page edits require a current content hash and enabled WordPress revisions. Publishing, shared changes and restoring live content require explicit confirmation. Theme drafts/releases retain the previous Bridge workflow.
+Mutations use operation IDs. Identical retries return the original result for seven days; conflicting or uncertain retries fail safely. Page edits require a current content hash and enabled WordPress revisions. Published pages cannot be changed or restored through the API. Draft and pending pages support recovery. Theme previews and approval accept CSS-only changes; executable files require non-executing staging.
 
 ## Requirements and boundaries
 
@@ -51,7 +51,7 @@ Mutations use operation IDs. Identical retries return the original result for se
 - Elementor, Divi and WPBakery content is preserved; those visual builders need separate adapters.
 - Headers and footers use the active theme's WordPress controls. This release does not expose universal header/footer or navigation builder tools.
 - Native WordPress theme colours and fonts remain the default. No theme is switched automatically.
-- The direct endpoint exposes page, shared section, media, SEO and draft theme tools. The older REST Bridge retains its additional metadata, calculator, cache and allowlisted WP-CLI operations.
+- The direct endpoint exposes page, shared section, media, SEO and draft theme tools. The older REST Bridge retains draft metadata, cache and allowlisted WP-CLI operations. Calculator writes are disabled until staging is implemented.
 
 ## Security
 

@@ -26,22 +26,22 @@ Draft-only content operations. WordPress-admin publication. No required Node hos
 
 Files: includes/class-review-gate.php, class-content-manager.php, class-block-manager.php, class-rest.php, class-mcp-tools.php, class-theme-manager.php, admin/class-admin.php, tests/review.php.
 
-- [ ] Write/run failing tests for draft-only block/MCP publication, SEO/meta, shared references and theme approval.
-- [ ] Merge existing manual-review changes, resolve conflicts without dropping direct MCP/Spectra.
-- [ ] Enforce the review rules in shared managers and verify passing behavioural tests.
+- [x] Write/run failing tests for draft-only block/MCP publication, SEO/meta, shared references and theme approval.
+- [x] Merge existing manual-review changes, resolve conflicts without dropping direct MCP/Spectra.
+- [x] Enforce the review rules in shared managers and verify passing behavioural tests.
 
 ### Task 2: Usable redesign and setup
 
 Files: new draft-copy manager, MCP definitions, admin setup, README and connection guide.
 
-- [ ] Write/run failing tests for copy creation, source immutability, stale hashes and restricted metadata.
-- [ ] Implement copy_page_for_review and review links under existing scopes, permissions and operation replay.
-- [ ] Show setup/readiness and manual-review instructions without requiring code from the user.
+- [x] Write/run failing tests for copy creation, source immutability, stale hashes and restricted metadata.
+- [x] Implement copy_page_for_review and review links under existing scopes, permissions and operation replay.
+- [x] Show setup/readiness and manual-review instructions without requiring code from the user.
 
 ### Task 3: Acceptance and release
 
 Files: real WordPress and Playwright tests, CI, release docs.
 
-- [ ] Update integration assertions to expect blocked API publication and preserved originals; test ordinary WordPress publication.
-- [ ] Run complete local/CI checks, browser editing and one independent review.
-- [ ] Package and save v0.6.0, publish source to a draft integration PR and provide connection steps. Actual site installation/linking requires the target URL.
+- [x] Update integration assertions to expect blocked API publication and preserved originals; test ordinary WordPress publication.
+- [x] Run complete local/CI checks, browser editing and one independent review.
+- [x] Package v0.6.0 in CI, publish source in draft PR #3 and provide connection steps. Direct file delivery was blocked by environment loss; the tested GitHub Actions artifact is available. Actual site installation/linking requires the target URL.
