@@ -30,10 +30,15 @@ review_reject(fn()=>WPGPTVibe_Block_Manager::change($shared['id'],$shared['hash'
 // Exercise the exact immutable theme release through the same manager as both transports.
 $original_theme=get_stylesheet();WPGPTVibe_Theme_Manager::create_draft(false);
 review_reject(fn()=>WPGPTVibe_Theme_Manager::publish_draft(),'administrator');
+review_reject(fn()=>WPGPTVibe_Theme_Manager::write_file('functions.php','<?php echo 1;'),'CSS');
+review_reject(fn()=>WPGPTVibe_Theme_Manager::write_file('client.js','alert(1)'),'CSS');
 WPGPTVibe_Review_Gate::approve_theme();$draft=WPGPTVibe_Theme_Manager::draft_status();$draft_root=wp_get_theme($draft['stylesheet'])->get_stylesheet_directory();
-file_put_contents($draft_root.'/review-proof.txt','Changed after approval');
+WPGPTVibe_Theme_Manager::write_file('review-proof.css','body { color: #123456; }');
 review_reject(fn()=>WPGPTVibe_Theme_Manager::publish_draft(),'administrator');
 WPGPTVibe_Review_Gate::approve_theme();$published=WPGPTVibe_Theme_Manager::publish_draft();
 review_verify(get_stylesheet()===$published['release_stylesheet'],'exact human-approved theme publishes through the guarded manager');
 review_reject(fn()=>WPGPTVibe_Theme_Manager::publish_draft(),'administrator');switch_theme($original_theme);
+file_put_contents($draft_root.'/unapproved.php','<?php echo 1;');
+review_reject(fn()=>WPGPTVibe_Theme_Manager::preview_url(),'staging');
+unlink($draft_root.'/unapproved.php');
 file_put_contents('/tmp/wpgptvibe-review-test.json',wp_json_encode(['source_id'=>$source,'draft_id'=>$copy['id'],'source_hash'=>WPGPTVibe_Block_Manager::get($source)['hash']]));

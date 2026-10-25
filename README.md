@@ -1,100 +1,36 @@
-# WPGPTVibe
+# WPGPTVibe Bridge 0.6.0
 
-WPGPTVibe provides a direct WordPress MCP plugin and an optional self-hosted multi-site application. It is designed to replace quota-bound third-party WordPress connectors for internal site operations while keeping destructive actions permission-gated and auditable.
+Internal WordPress MCP connection for ChatGPT, with native visually editable pages and human publication review. WordPress hosts the MCP endpoint and OAuth authorization; the Node application is optional.
 
-## Direct WordPress connection (plugin 0.4.0)
+## Connect and use
 
-Install `wordpress-plugin/` on a WordPress site, then connect its OAuth-protected MCP URL in ChatGPT. No Node deployment is required for this route. Pages use native editable Gutenberg sections, starter patterns, shared section impact reports and revision recovery. See [plugin installation and editing instructions](wordpress-plugin/README.md).
+1. Install the plugin ZIP in WordPress and activate it.
+2. Open **Tools > WPGPTVibe**. Enable only the capabilities you need and copy the displayed MCP URL.
+3. Add that URL as a custom MCP connection in ChatGPT, select OAuth, and authorize your WordPress account.
+4. Ask for a draft page, inspect it in the WordPress visual editor, and publish there after review.
 
-## Optional multi-site application (0.3.0)
+See [connection guide](docs/CONNECT-CHATGPT.md) and [plugin documentation](wordpress-plugin/README.md).
 
-The existing Node application remains available for the central registry, encrypted Bridge credentials and optional browser tools.
+## Supported workflow
 
-## Architecture
+- Native Gutenberg sections and supported Spectra Blocks remain editable in WordPress without coding.
+- Detect builder capabilities before editing. Tested Spectra Blocks version: **1.0.11**; Astra: **4.14.1**. Legacy Spectra/UAG and arbitrary third-party builders are not automatically supported.
+- Copy an existing page into a separate redesign draft, preserving the live original. Copies preserve native content and page template, not arbitrary plugin metadata.
+- Edit drafts with current-content hashes, operation replay protection, revisions, and audit records.
+- Submit drafts to the WordPress review queue with editor and preview links. Publication happens in WordPress.
+- Create new synced sections and insert references into draft pages. Existing synced sections must be edited in WordPress because theme-file and concurrent publication references cannot be proven absent.
+- Theme API changes are **CSS only**. Preview, approval and activation reject changed executable files or parent-theme headers. An administrator approves an exact theme fingerprint for one use within 15 minutes.
 
-```text
-ChatGPT / MCP client
-        |
-        v
-WPGPTVibe application
-  /mcp      MCP endpoint
-  /admin    management console
-  /health   deployment health
-        |
-        v
-Encrypted multi-site registry + activity log
-(MySQL in production, encrypted local file fallback in development)
-        |
-        v
-WPGPTVibe Bridge plugin on each WordPress site
-        |
-        v
-Themes / content / media / SEO / cache / calculators / approved WP-CLI
-```
+## Boundaries
 
-## Current release: 0.3.1 (review-gate branch; not yet released)
+This is an internal product candidate, not a public ChatGPT directory listing. Full Astra header/footer settings, unsupported builders, existing synced section edits and executable theme changes require native WordPress work or a future staging system. A redesign copy does not automatically replace the original page or its URL.
 
-### Application
+No separate Node hosting or OpenAI API key is required for the direct connection. ChatGPT account/workspace access to custom MCP connections is still required.
 
-- remote MCP endpoint
-- responsive admin dashboard
-- signed admin sessions and CSRF protection
-- MySQL-backed multi-site registry
-- AES-256-GCM encrypted WordPress Bridge tokens
-- site add/update/remove and connection testing
-- live WordPress diagnostics
-- central activity logging
-- theme release and rollback history
-- optional Playwright browser QA
-- Docker and Docker Compose deployment
-- production health endpoint
+## Repository and validation
 
-### WordPress Bridge
+- `wordpress-plugin/`: installable plugin and disposable WordPress integration/browser tests.
+- `mcp-server/`: optional central multi-site application.
+- `docs/`: connection instructions, design and implementation records.
 
-- capability-gated REST API
-- theme listing/search/read/diff
-- draft theme creation and preview
-- exact file edits, writes, deletes and batches
-- immutable release themes on publish
-- rollback records
-- pages/posts/custom post types
-- meta management
-- media upload/import/update
-- Rank Math / Yoast / generic SEO fields
-- cache and rewrite controls
-- structured allowlisted WP-CLI operations
-- calculator provider contract and validation
-- request guards, audit logs and confirmation gates
-
-## Repository
-
-- `wordpress-plugin/` — installable WordPress Bridge
-- `mcp-server/` — deployable WPGPTVibe Node application
-- `deploy/` — production deployment notes
-- `docker-compose.yml` — app + MySQL deployment
-
-GitHub Actions validates PHP syntax, runs MCP tests/type checks/builds, boots the application for smoke tests and produces both deployment artifacts.
-
-## Production rule
-
-Do not commit real API tokens, MCP keys, database credentials, admin password hashes or master keys. Production secrets belong only in the hosting environment.
-
-## Manual review workflow (0.3.1 candidate)
-
-- Bridge API creates posts and pages only as `draft` or `pending`; requests for `publish`, `future`, or `private` are rejected.
-- Bridge edits and deletions of already-published content are blocked. Draft content and its SEO/meta can be edited through MCP; use the WordPress editor for final review and publication.
-- Direct API edits of existing published SEO/meta and bulk routes are blocked. Calculator update endpoints are deliberately disabled until a staging model is implemented.
-- A WordPress administrator reviews a theme draft via its preview, then selects **Tools > WPGPTVibe > Approve Current Theme Draft for Publication**. The approval is tied to the draft-file SHA-256 fingerprint, expires after 15 minutes, and can only be used once. The MCP publish tool still requires its existing confirmation and publish capability.
-- Theme file edits invalidate the previous approval because the fingerprint changes.
-- Important limitation: this release is not a complete revision/proposal workflow for existing published pages. It blocks their direct updates rather than making reviewable copies. Never claim otherwise.
-- This control governs WPGPTVibe Bridge API operations; native WordPress administrators can still publish manually. Keep the plugin read-only during initial deployment and test all review paths before enabling write capabilities.
-
-### Approval test checklist
-
-1. Request a new post with status `publish` using the Bridge: it must fail and create no post.
-2. Create a draft and edit it: it must remain unpublished; publish manually in WordPress.
-3. Attempt to update a published page, its SEO, its meta, and batch SEO/meta: every request must fail.
-4. Attempt to update calculators: it must fail pending a staging implementation.
-5. Attempt to publish a draft theme without admin approval: it must fail.
-6. Approve the draft inside WordPress, edit any draft theme file, then attempt publish: it must fail (fingerprint changed).
-7. Approve the unchanged draft again; the confirmed publish request should succeed once, subject to theme validation. Rollback must remain available with its separate permission and confirmation.
+GitHub Actions runs PHP behavior tests, real WordPress/MySQL integration, OAuth/MCP checks, Spectra visual editing and manual publication browser checks, plus the optional application's tests and build. Never commit production credentials.

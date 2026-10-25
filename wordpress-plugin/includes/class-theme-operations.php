@@ -45,6 +45,7 @@ final class WPGPTVibe_Theme_Operations {
     }
 
     public static function delete_draft_file(string $path): array {
+        WPGPTVibe_Review_Gate::assert_css_write($path);
         $draft = self::draft();
         $root = self::theme_root((string) $draft['stylesheet']);
         $full = self::existing_file($root, $path);

@@ -21,11 +21,14 @@ require dirname(__DIR__).'/includes/class-meta-manager.php';
 require dirname(__DIR__).'/includes/class-seo-manager.php';
 rejects(fn()=>WPGPTVibe_Meta_Manager::update(800,[]),'Manual review');
 rejects(fn()=>WPGPTVibe_SEO_Manager::update(800,[]),'Manual review');
+rejects(fn()=>WPGPTVibe_Review_Gate::assert_editable(802),'Manual review');
+function get_file_data($file,$headers,$context='') { $data=file_get_contents($file);$out=[];foreach($headers as $key=>$name){preg_match('/^'.preg_quote($name,'/').':\s*(.*)$/m',$data,$m);$out[$key]=trim($m[1]??'');}return $out; }
 // Real on-disk theme fixtures; fake WP theme lookup only at the platform boundary.
-class WPGPTVibe_Theme_Manager {public static function draft_status(){return ['exists'=>true,'stylesheet'=>'review-draft'];}}
+class WPGPTVibe_Theme_Manager {public static function draft_status(){return ['exists'=>true,'stylesheet'=>'review-draft','source_stylesheet'=>'review-source'];}}
 function wp_get_theme($slug=''){return new class($slug){public function __construct(private $slug){}public function exists(){return true;}public function get_stylesheet_directory(){return $GLOBALS['theme_roots'][$this->slug];}};}
 $base=dirname(__DIR__,2).'/.test-runtime/review-themes';@mkdir($base.'/draft',0777,true);@mkdir($base.'/release',0777,true);
-$GLOBALS['theme_roots']=['review-draft'=>$base.'/draft'];file_put_contents($base.'/draft/style.css','Theme Name: Review');file_put_contents($base.'/release/style.css','Theme Name: Unapproved');
+@mkdir($base.'/source',0777,true);file_put_contents($base.'/source/style.css','Theme Name: Source');
+$GLOBALS['theme_roots']=['review-draft'=>$base.'/draft','review-source'=>$base.'/source'];file_put_contents($base.'/draft/style.css','Theme Name: Review');file_put_contents($base.'/release/style.css','Theme Name: Unapproved');
 WPGPTVibe_Review_Gate::approve_theme();
 rejects(fn()=>WPGPTVibe_Review_Gate::consume_theme_approval($base.'/release'),'administrator');
 WPGPTVibe_Review_Gate::approve_theme();file_put_contents($base.'/draft/style.css','Theme Name: Changed');
@@ -34,3 +37,13 @@ WPGPTVibe_Review_Gate::approve_theme();$GLOBALS['deny']=true;
 rejects(fn()=>WPGPTVibe_Review_Gate::consume_theme_approval(),'administrator');$GLOBALS['deny']=false;
 WPGPTVibe_Review_Gate::approve_theme();WPGPTVibe_Review_Gate::consume_theme_approval();
 rejects(fn()=>WPGPTVibe_Review_Gate::consume_theme_approval(),'administrator');
+
+foreach (['functions.php','client.js','templates/index.html'] as $file) { rejects(fn()=>WPGPTVibe_Review_Gate::assert_css_write($file),'CSS'); }
+rejects(fn()=>WPGPTVibe_Review_Gate::assert_css_write('style.css','</style><script>alert(1)</script>'),'executable');
+file_put_contents($base.'/draft/functions.php','<?php echo "unapproved";');
+rejects(fn()=>WPGPTVibe_Review_Gate::assert_safe_theme_preview($base.'/draft',$base.'/source'),'staging');
+rejects(fn()=>WPGPTVibe_Review_Gate::approve_theme(),'staging');
+unlink($base.'/draft/functions.php');
+file_put_contents($base.'/draft/style.css',"Theme Name: Changed\nTemplate: evil-parent");
+rejects(fn()=>WPGPTVibe_Review_Gate::assert_safe_theme_preview($base.'/draft',$base.'/source'),'staging');
+file_put_contents($base.'/draft/style.css','Theme Name: Review');

@@ -213,7 +213,7 @@ final class WPGPTVibe_Block_Manager {
             if(!hash_equals(hash('sha256',$post->post_content),$expected_hash)){throw new RuntimeException('This page has newer edits.');}
             self::confirm_shared($post,$affected_hash);
             if(!wp_revisions_enabled($post)){throw new RuntimeException('WordPress revisions are disabled.');}
-            if($post->post_status!=='draft'&&!$confirm_live){throw new RuntimeException('Confirm restoration of published content.');}
+            if(!in_array($post->post_status,['draft','pending','auto-draft'],true)&&!$confirm_live){throw new RuntimeException('Confirm restoration of published content.');}
             $revision=get_post($revision_id);
             if(!$revision||wp_is_post_revision($revision_id)!==$id){throw new RuntimeException('Revision does not belong to this page.');}
             if($post->post_type==='wp_block'){WPGPTVibe_Shared_Patterns::assert_acyclic($id,$revision->post_content);}

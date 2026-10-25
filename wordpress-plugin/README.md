@@ -62,3 +62,7 @@ Disconnect or reset registrations from Tools → WPGPTVibe. Callback changes inv
 ## Verification
 
 CI runs PHP syntax and behavioral tests, WordPress/MySQL integration, editor registration and browser acceptance. A passing CI build does not prove that a real ChatGPT account is linked to a deployed website. Verify that final connection on a test site before using production publishing tools.
+
+## 0.6.0 internal product safety boundaries
+
+Existing synced sections require native WordPress editing. Usage reports cover database content and block widgets, excluding theme files. Theme API writes/deletes are CSS only; changed executable files and changed parent headers block preview, approval and activation. See [connection guide](../docs/CONNECT-CHATGPT.md).

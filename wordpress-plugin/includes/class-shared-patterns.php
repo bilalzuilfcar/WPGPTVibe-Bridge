@@ -26,7 +26,7 @@ final class WPGPTVibe_Shared_Patterns {
         $affected=[];
         foreach($query->posts as $post){if($post->ID!==$id&&self::references($post->post_content,$id,[$id])){$affected[]=['type'=>'post','id'=>$post->ID,'title'=>$post->post_title,'status'=>$post->post_status,'post_type'=>$post->post_type,'editor_url'=>get_edit_post_link($post->ID,'raw')];}}
         foreach((array)get_option('widget_block',[]) as $widget_id=>$widget){if(is_array($widget)&&self::references((string)($widget['content']??''),$id,[$id])){$affected[]=['type'=>'widget','id'=>(string)$widget_id,'title'=>'Block widget '.$widget_id];}}
-        return ['items'=>$affected,'count'=>count($affected),'hash'=>hash('sha256',wp_json_encode($affected)),'complete'=>true];
+        return ['items'=>$affected,'count'=>count($affected),'hash'=>hash('sha256',wp_json_encode($affected)),'complete'=>true,'scope'=>'database_content_and_block_widgets','includes_theme_files'=>false];
     }
     public static function usage(int $id): array {
         try{return self::impact($id);}catch(RuntimeException $e){return ['items'=>[],'count'=>null,'hash'=>null,'complete'=>false,'error'=>$e->getMessage()];}
