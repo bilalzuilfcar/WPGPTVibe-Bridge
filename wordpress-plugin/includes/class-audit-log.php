@@ -17,6 +17,7 @@ final class WPGPTVibe_Audit_Log {
         $entry = [
             'timestamp' => gmdate('c'),
             'request_id' => self::request_id(),
+            'user_id' => get_current_user_id(),
             'operation' => sanitize_key($operation),
             'target' => sanitize_text_field($target),
             'result' => sanitize_key($result),

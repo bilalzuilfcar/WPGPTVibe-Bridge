@@ -21,7 +21,12 @@ final class WPGPTVibe_Meta_Manager {
     }
 
     public static function update(int $content_id, array $meta): array {
+        return WPGPTVibe_Block_Manager::locked($content_id,static fn()=>self::update_draft($content_id, $meta));
+    }
+
+    private static function update_draft(int $content_id, array $meta): array {
         self::assert_content($content_id);
+        WPGPTVibe_Review_Gate::assert_unpublished($content_id);
         $updated = [];
         foreach ($meta as $key => $value) {
             $key = sanitize_key((string) $key);

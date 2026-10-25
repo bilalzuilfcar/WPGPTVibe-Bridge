@@ -12,6 +12,10 @@ final class WPGPTVibe_Auth {
 
     public const CAPABILITIES = [
         'read_site',
+        'read_content',
+        'edit_layout',
+        'restore_content',
+        'publish_content',
         'read_theme_files',
         'edit_theme_files',
         'create_draft_themes',
@@ -35,6 +39,10 @@ final class WPGPTVibe_Auth {
         if (!get_option(self::CAPABILITIES_OPTION)) {
             update_option(self::CAPABILITIES_OPTION, [
                 'read_site' => true,
+                'read_content' => true,
+                'edit_layout' => false,
+                'restore_content' => false,
+                'publish_content' => false,
                 'read_theme_files' => true,
                 'edit_theme_files' => false,
                 'create_draft_themes' => true,

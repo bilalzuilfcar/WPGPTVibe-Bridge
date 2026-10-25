@@ -1,72 +1,36 @@
-# WPGPTVibe
+# WPGPTVibe Bridge 0.6.0
 
-WPGPTVibe is a self-hosted WordPress control plane and MCP application. It is designed to replace quota-bound third-party WordPress connectors for internal site operations while keeping destructive actions permission-gated and auditable.
+Internal WordPress MCP connection for ChatGPT, with native visually editable pages and human publication review. WordPress hosts the MCP endpoint and OAuth authorization; the Node application is optional.
 
-## Architecture
+## Connect and use
 
-```text
-ChatGPT / MCP client
-        |
-        v
-WPGPTVibe application
-  /mcp      MCP endpoint
-  /admin    management console
-  /health   deployment health
-        |
-        v
-Encrypted multi-site registry + activity log
-(MySQL in production, encrypted local file fallback in development)
-        |
-        v
-WPGPTVibe Bridge plugin on each WordPress site
-        |
-        v
-Themes / content / media / SEO / cache / calculators / approved WP-CLI
-```
+1. Install the plugin ZIP in WordPress and activate it.
+2. Open **Tools > WPGPTVibe**. Enable only the capabilities you need and copy the displayed MCP URL.
+3. Add that URL as a custom MCP connection in ChatGPT, select OAuth, and authorize your WordPress account.
+4. Ask for a draft page, inspect it in the WordPress visual editor, and publish there after review.
 
-## Current release: 0.3.0
+See [connection guide](docs/CONNECT-CHATGPT.md) and [plugin documentation](wordpress-plugin/README.md).
 
-### Application
+## Supported workflow
 
-- remote MCP endpoint
-- responsive admin dashboard
-- signed admin sessions and CSRF protection
-- MySQL-backed multi-site registry
-- AES-256-GCM encrypted WordPress Bridge tokens
-- site add/update/remove and connection testing
-- live WordPress diagnostics
-- central activity logging
-- theme release and rollback history
-- optional Playwright browser QA
-- Docker and Docker Compose deployment
-- production health endpoint
+- Native Gutenberg sections and supported Spectra Blocks remain editable in WordPress without coding.
+- Detect builder capabilities before editing. Tested Spectra Blocks version: **1.0.11**; Astra: **4.14.1**. Legacy Spectra/UAG and arbitrary third-party builders are not automatically supported.
+- Copy an existing page into a separate redesign draft, preserving the live original. Copies preserve native content and page template, not arbitrary plugin metadata.
+- Edit drafts with current-content hashes, operation replay protection, revisions, and audit records.
+- Submit drafts to the WordPress review queue with editor and preview links. Publication happens in WordPress.
+- Create new synced sections and insert references into draft pages. Existing synced sections must be edited in WordPress because theme-file and concurrent publication references cannot be proven absent.
+- Theme API changes are **CSS only**. Preview, approval and activation reject changed executable files or parent-theme headers. An administrator approves an exact theme fingerprint for one use within 15 minutes.
 
-### WordPress Bridge
+## Boundaries
 
-- capability-gated REST API
-- theme listing/search/read/diff
-- draft theme creation and preview
-- exact file edits, writes, deletes and batches
-- immutable release themes on publish
-- rollback records
-- pages/posts/custom post types
-- meta management
-- media upload/import/update
-- Rank Math / Yoast / generic SEO fields
-- cache and rewrite controls
-- structured allowlisted WP-CLI operations
-- calculator provider contract and validation
-- request guards, audit logs and confirmation gates
+This is an internal product candidate, not a public ChatGPT directory listing. Full Astra header/footer settings, unsupported builders, existing synced section edits and executable theme changes require native WordPress work or a future staging system. A redesign copy does not automatically replace the original page or its URL.
 
-## Repository
+No separate Node hosting or OpenAI API key is required for the direct connection. ChatGPT account/workspace access to custom MCP connections is still required.
 
-- `wordpress-plugin/` — installable WordPress Bridge
-- `mcp-server/` — deployable WPGPTVibe Node application
-- `deploy/` — production deployment notes
-- `docker-compose.yml` — app + MySQL deployment
+## Repository and validation
 
-GitHub Actions validates PHP syntax, runs MCP tests/type checks/builds, boots the application for smoke tests and produces both deployment artifacts.
+- `wordpress-plugin/`: installable plugin and disposable WordPress integration/browser tests.
+- `mcp-server/`: optional central multi-site application.
+- `docs/`: connection instructions, design and implementation records.
 
-## Production rule
-
-Do not commit real API tokens, MCP keys, database credentials, admin password hashes or master keys. Production secrets belong only in the hosting environment.
+GitHub Actions runs PHP behavior tests, real WordPress/MySQL integration, OAuth/MCP checks, Spectra visual editing and manual publication browser checks, plus the optional application's tests and build. Never commit production credentials.

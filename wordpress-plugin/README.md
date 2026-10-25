@@ -1,61 +1,68 @@
-# WPGPTVibe Bridge 0.3.0
+# WPGPTVibe Bridge 0.6.0
 
-WPGPTVibe Bridge is the WordPress-side execution layer for the self-hosted WPGPTVibe application.
+A WordPress plugin for connecting a website directly to ChatGPT through MCP. A separate Node application is optional.
 
-## Installation
+## Install and connect
 
-1. Download the `wpgptvibe-bridge` artifact from GitHub Actions.
-2. Extract the workflow artifact once.
-3. Upload the inner `wpgptvibe-bridge.zip` through WordPress Admin → Plugins → Add Plugin → Upload Plugin.
-4. Activate the plugin.
-5. Open Tools → WPGPTVibe.
-6. Generate an API token and copy it immediately.
-7. Enable only the capabilities needed on this WordPress site.
+1. Upload `wpgptvibe-bridge.zip` in WordPress → Plugins → Add Plugin → Upload Plugin, then activate it.
+2. Open Tools → WPGPTVibe. Check HTTPS and the two discovery links.
+3. In ChatGPT Plugins, choose Add custom MCP server. Copy the MCP URL from WordPress, select OAuth and dynamic client registration (DCR).
+4. Use `site:read pages:read pages:write layout:write media:write seo:write` for ordinary page work. Publication remains in WordPress; `pages:publish` does not bypass manual review.
+5. Sign in to WordPress and review the requested permissions. If ChatGPT shows a different callback URL, copy that exact HTTPS URL into the plugin's approved callbacks, then reconnect.
+6. Enable Read Content, Manage Content and Edit Layout. Enable media, SEO and recovery capabilities as needed. Publishing and theme permissions remain separate.
+7. Ask ChatGPT to inspect the website, create a draft from a pattern, and return the WordPress editor link.
 
-## Security model
+New connections use OAuth. The existing API token controls are for the optional older Node application, not for this direct ChatGPT connection.
 
-- HTTPS is required outside local development.
-- WordPress stores only a password hash of the Bridge token.
-- the central WPGPTVibe application stores the site token encrypted with AES-256-GCM.
-- every capability is independently enabled/disabled.
-- request size and rate guards are enforced.
-- theme writes occur in draft themes.
-- destructive operations use explicit confirmations.
-- arbitrary SQL, shell execution and PHP eval are not exposed.
-- WP-CLI is a named allowlist, not a raw command endpoint.
-- all writes are audited.
+## Edit without code
 
-## Major capabilities
+Open Pages → Edit. Click headings or body text to rewrite them. Select an image and choose Replace image. Use the block toolbar or List View to move, duplicate or remove sections. The section sidebar includes spacing, colours and typography sizes; zero font size uses the active theme's default.
 
-- site diagnostics
-- audit log
-- theme files: list/search/read/diff/edit/write/delete/batch
-- draft theme: create/status/preview
-- immutable theme release publishing and rollback history
-- pages, posts and public custom post types
-- post meta
-- media upload/import/update
-- Rank Math / Yoast / generic SEO
-- cache and rewrite controls
-- approved WP-CLI operations
-- calculator provider contract, validation and deterministic tests
+The inserter contains five editable patterns: hero, services, four cards, FAQs and a call to action. Generated containers are native Gutenberg plugin blocks with editable fields. Core paragraphs and headings can also be created and updated; other native or third-party blocks retain their original markup during reordering.
 
-## Release flow
+“Protect section layouts” keeps supported content editable while protecting the layout. An administrator can turn protection off to restructure the page. Save current edits before asking ChatGPT to modify the same page.
 
-```text
-active theme
-   ↓
-draft clone
-   ↓
-edit / validate / preview
-   ↓
-immutable release clone
-   ↓
-activate release
-   ↓
-release record
-   ↓
-rollback to previous theme if required
-```
+The plugin must remain active to render its dynamic sections. Deactivation preserves their stored content, but does not convert them into static HTML.
 
-The mutable draft directory is never used as the final production release after 0.3.0.
+## Native Spectra pages (0.5.0)
+
+Install and activate **Spectra Blocks 1.0.11** (`spectra-blocks`) separately. It is different from **Spectra Legacy** (`ultimate-addons-for-gutenberg`, `uagb/` blocks). Keep Legacy active for existing Legacy pages. This release does not migrate them. Other Spectra Blocks versions are detected but writes are refused until tested.
+
+Ask ChatGPT to call `get_builder_capabilities`, then `list_spectra_patterns` or `create_spectra_page`. The Partnerships and Certifications starter is a demonstration draft: replace examples with verified credentials and approved logos before publishing.
+
+Pages use Spectra's actual Container, Text, Buttons and Button blocks, plus WordPress Image blocks. Open the returned editor link to edit text, replace images through the Media Library, move/duplicate sections and change builder settings. Supported MCP updates include text, links, spacing, colours, font settings, container dimensions and grid/wrapping layouts. Advanced per-device controls remain in the visual editor. If an existing page has responsive overrides or authoritative dimension settings, conflicting design edits are refused with a visual-editor instruction rather than silently ignored; text and link edits remain available. Container background colours use Spectra's native `backgroundColor` field. Images can be inserted from accessible media IDs; replace them visually or use remove/insert operations. The adapter does not rewrite arbitrary image markup.
+
+Ordinary supported MCP edits do not require an open editor tab or screenshot for each action. Save local editor changes before requesting MCP edits, then reload the editor afterwards. Visual review still requires browser access.
+
+Astra is compatible with these page elements; its global settings and header/footer builder are not exposed by this adapter. No theme is installed or switched on your website automatically. Spectra must remain active to render Spectra's dynamic blocks; WPGPTVibe is required for its own blocks and the connection, not for rendering native Spectra elements.
+
+Test matrix: WordPress 7.1.3, PHP 8.3, Spectra Blocks 1.0.11 and Astra 4.14.1 (disposable MySQL site in CI). Do not interpret this as testing every WordPress/PHP/theme combination. Spectra requires WordPress 6.6 or newer.
+
+## Shared sections and recovery
+
+New synced patterns can be inserted into draft pages. Existing synced patterns require native WordPress editing. Usage reports cover database content and block widgets, excluding theme files, and refuse scans over the limit.
+
+Mutations use operation IDs. Identical retries return the original result for seven days; conflicting or uncertain retries fail safely. Page edits require a current content hash and enabled WordPress revisions. Published pages cannot be changed or restored through the API. Draft and pending pages support recovery. Theme previews and approval accept CSS-only changes; executable files require non-executing staging.
+
+## Requirements and boundaries
+
+- WordPress 6.4+, PHP 8.1+, HTTPS, WordPress Block Editor and MySQL/InnoDB.
+- OAuth metadata and WordPress REST requests must be reachable through the host's firewall/cache configuration.
+- Elementor, Divi and WPBakery content is preserved; those visual builders need separate adapters.
+- Headers and footers use the active theme's WordPress controls. This release does not expose universal header/footer or navigation builder tools.
+- Native WordPress theme colours and fonts remain the default. No theme is switched automatically.
+- The direct endpoint exposes page, shared section, media, SEO and draft theme tools. The older REST Bridge retains draft metadata, cache and allowlisted WP-CLI operations. Calculator writes are disabled until staging is implemented.
+
+## Security
+
+OAuth uses a bundled, namespaced MIT OAuth library with S256 PKCE, exact redirect matching, resource binding, single-use codes, rotating refresh tokens and revocation. Only administrators can authorize connections. Tool scopes, local Bridge capabilities and WordPress object permissions are checked on every call. Tokens are stored under hashed transient keys with expiry; operation history is non-autoloaded durable storage. No anonymous website tools, arbitrary SQL, shell commands or PHP eval are exposed.
+
+Disconnect or reset registrations from Tools → WPGPTVibe. Callback changes invalidate existing sessions. Source code contains no production credentials.
+
+## Verification
+
+CI runs PHP syntax and behavioral tests, WordPress/MySQL integration, editor registration and browser acceptance. A passing CI build does not prove that a real ChatGPT account is linked to a deployed website. Verify that final connection on a test site before using production publishing tools.
+
+## 0.6.0 internal product safety boundaries
+
+Existing synced sections require native WordPress editing. Usage reports cover database content and block widgets, excluding theme files. Theme API writes/deletes are CSS only; changed executable files and changed parent headers block preview, approval and activation. See [connection guide](../docs/CONNECT-CHATGPT.md).

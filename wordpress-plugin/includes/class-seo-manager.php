@@ -25,7 +25,12 @@ final class WPGPTVibe_SEO_Manager {
     }
 
     public static function update(int $post_id, array $data): array {
+        return WPGPTVibe_Block_Manager::locked($post_id,static fn()=>self::update_draft($post_id, $data));
+    }
+
+    private static function update_draft(int $post_id, array $data): array {
         self::assert_post($post_id);
+        WPGPTVibe_Review_Gate::assert_unpublished($post_id);
         $provider = self::provider();
         $result = $provider->update($post_id, $data);
         WPGPTVibe_Audit_Log::record('seo_update', 'post:' . $post_id, 'success', ['meta' => ['provider' => $provider->name()]]);

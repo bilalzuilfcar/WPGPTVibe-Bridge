@@ -30,6 +30,8 @@ final class WPGPTVibe_Theme_Manager {
             return;
         }
 
+        try { self::assert_safe_draft($draft); } catch (Throwable $error) { wp_die(esc_html($error->getMessage()), 'Theme preview unavailable', ['response' => 403]); }
+
         add_filter('pre_option_stylesheet', static fn() => $draft['stylesheet']);
         add_filter('pre_option_template', static fn() => $theme->get_template());
     }
@@ -153,6 +155,7 @@ final class WPGPTVibe_Theme_Manager {
 
     public static function preview_url(): array {
         $draft = self::require_draft();
+        self::assert_safe_draft($draft);
         $token = bin2hex(random_bytes(24));
         set_transient('wpgptvibe_preview_' . hash('sha256', $token), $draft, 15 * MINUTE_IN_SECONDS);
 
@@ -163,6 +166,7 @@ final class WPGPTVibe_Theme_Manager {
     }
 
     public static function edit_file(string $path, string $old_content, string $new_content, bool $replace_all = false): array {
+        WPGPTVibe_Review_Gate::assert_css_write($path);
         $draft = self::require_draft();
         $root = self::theme_root($draft['stylesheet']);
         $full = self::existing_file_path($root, $path);
@@ -200,6 +204,7 @@ final class WPGPTVibe_Theme_Manager {
     }
 
     public static function write_file(string $path, string $content): array {
+        WPGPTVibe_Review_Gate::assert_css_write($path, $content);
         $draft = self::require_draft();
         $root = self::theme_root($draft['stylesheet']);
         $relative = self::normalize_relative_path($path);
@@ -228,7 +233,13 @@ final class WPGPTVibe_Theme_Manager {
     }
 
     public static function publish_draft(): array {
+        return WPGPTVibe_Review_Gate::theme_lock(static fn()=>self::publish_approved_draft());
+    }
+
+    private static function publish_approved_draft(): array {
+        if(!WPGPTVibe_Review_Gate::theme_approval_status()['approved']){throw new RuntimeException('A WordPress administrator must approve this draft theme in Tools > WPGPTVibe before publication.');}
         $draft = self::require_draft();
+        self::assert_safe_draft($draft);
         $draft_theme = wp_get_theme($draft['stylesheet']);
         if (!$draft_theme->exists() || !empty($draft_theme->errors())) {
             throw new RuntimeException('Draft theme is not valid and cannot be published.');
@@ -259,6 +270,9 @@ final class WPGPTVibe_Theme_Manager {
             self::delete_directory($release_root);
             throw new RuntimeException('Release theme is not valid and cannot be activated.');
         }
+
+        try { WPGPTVibe_Review_Gate::consume_theme_approval($release_root); }
+        catch(Throwable $error){ self::delete_directory($release_root); throw $error; }
 
         $releases = get_option(self::RELEASES_OPTION, []);
         if (!is_array($releases)) {
@@ -325,6 +339,11 @@ final class WPGPTVibe_Theme_Manager {
         ]);
 
         return ['release_id' => $release_id, 'active_theme' => get_stylesheet()];
+    }
+
+    private static function assert_safe_draft(array $draft): void {
+        if (empty($draft['source_stylesheet'])) { throw new RuntimeException('Theme staging source unavailable.'); }
+        WPGPTVibe_Review_Gate::assert_safe_theme_preview(self::theme_root($draft['stylesheet']), self::theme_root($draft['source_stylesheet']));
     }
 
     private static function require_draft(): array {
@@ -407,6 +426,7 @@ final class WPGPTVibe_Theme_Manager {
     }
 
     private static function validate_content(string $path, string $content): void {
+        WPGPTVibe_Review_Gate::assert_css_write($path, $content);
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
         if ($extension === 'json') {
